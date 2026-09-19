@@ -21,16 +21,17 @@ shared file with a game's facts baked into it.
 | the four JS shims (scores, achievements, haptics, personal bests) | still in george-boole |
 | the safe-area CSS, generated inside the pipeline | still in george-boole |
 | `tools/screenshots/`, `store/metadata.md`, the icon scripts | still in george-boole |
-| `template/`, `tools/new-game-ios.mjs`, `tests/` | **not written**; the layout below is the plan for them |
+| `tests/consumers.test.mjs` | **here**, 12 tests over `sync.mjs`'s exit-code contract |
+| `template/`, `tools/new-game-ios.mjs` | **not written**; the layout below is the plan for them |
 
 So the Layout section is partly a plan. Directories that do not exist yet are
-marked. Everything in `native/` and `tools/` is real and runs.
+marked. Everything in `native/`, `tools/` and `tests/` is real and runs.
 
 ## The name, and what was ruled out
 
 `Hypnopompia` is a Texas Hold'Em Lava Dome track, on *Pompous Fanfare for All
-Occasions* (2019). It was chosen over five other candidates
-because it **extends** adenosine rather than merely matching it: THLD has
+Occasions* (2019). It was chosen over five other candidates because it
+**extends** adenosine rather than merely matching it: THLD has
 `Adenosine`, `Hypnagogia` and `Hypnopompia`, and adenosine is the molecule that
 builds sleep pressure while hypnopompia is surfacing out of it. The two engines
 are two points on one arc, and `hypnagogia` stays free for a third. It also
@@ -158,30 +159,11 @@ anything is written; see "What has landed and what has not" above.
 -   screenshots/
 -     capture.sh          simctl: boot, inject, freeze the clock, shoot
 -     shots.js            drives the real UI; the staging half
-- tests/
++ tests/
++   consumers.test.mjs    sync.mjs's exit-code contract, on synthetic games
 -   transforms.test.mjs   each transform against a fixture page
 -   fixtures/             a minimal arcade index.html and shared/
--   consumers.test.mjs    sync.mjs --check against every path in consumers.json
 ```
-
-**`tests/` does not exist yet, and that is the largest gap.** The two tools were
-verified by hand on 2026-09-18, with both of `sync.mjs`'s guards made to fire and
-`check-metadata.mjs` checked against a copy with a forbidden keyword smuggled in.
-Nothing reruns any of that. `consumers.test.mjs` is the cheapest first test and
-needs no fixtures.
-
-**`npm test` deliberately does not run `node --test`.** It runs
-`sync.mjs --check`, which is the only automated verification this repo currently
-has, and which refuses to pass on zero comparisons. The reason is a finding worth
-keeping, because it is this repo's own subject matter appearing in the standard
-tooling: **`node --test` exits 0 when it finds no test files at all.** Verified on
-Node 24.19.0. So the obvious `"test": "node --test tests/"` would have reported
-success over nothing, from the first commit, in a repo whose guards section exists
-to prevent exactly that. Two adjacent traps, found at the same time: `node --test
-tests/` and `node --test tests` both try to *load* `tests` as a module and exit 1
-with `MODULE_NOT_FOUND`, so a trailing path needs a glob (`tests/**/*.test.mjs`)
-or no argument at all. When tests are written, give `node --test` an explicit glob
-and keep the drift check beside it.
 
 A game's `ios/` then holds only what is its own:
 
@@ -196,6 +178,53 @@ games/<game>/ios/
   tools/                only game-specific art scripts (make-boole-pixel.py stays)
   www/                  generated, gitignored
 ```
+
+## The tests, and why they assert exit codes
+
+`tests/consumers.test.mjs`, 12 tests, added 2026-09-18. They exist because
+`sync.mjs` distinguishes three outcomes that look alike from the outside (in sync,
+drifted, compared nothing) and **only the exit code carries that distinction to
+CI.** A test that read the printed lines would pass on a script that printed
+reassuring text and exited 0 regardless, which is the bug this repo is about. So:
+
+| Asserted | |
+|---|---|
+| in sync | exit 0 |
+| a drifted file | exit 1, named, and the undrifted one still reported ok |
+| a file deleted from the game | exit 1, reported GONE rather than ok |
+| **nothing to compare** | **exit 2, not 0** |
+| a game with no `ios/` | refused, and the destination not created anyway |
+| no target and no `--check` | usage error, not silent success |
+| vendoring | byte-identical, idempotent, and repairs drift |
+| `native/` itself | present, non-empty, and free of CR bytes |
+
+Every fixture is a throwaway game tree in the OS temp directory, passed
+explicitly, so no test depends on which games are checked out and none can touch
+a real one.
+
+**The suite was mutation-tested, which is the only way to know a test suite is
+not itself a check that passes by finding nothing.** Making the exit-2 guard
+return 0 turned the suite red; disabling the hash comparison so every file
+reported `same` failed 5 tests. `sync.mjs` was restored byte-identical after each.
+Do that again after changing `sync.mjs`: a green suite against a broken guard is
+the only failure mode that would make all of this worse than nothing.
+
+### Two `node --test` traps, both met while wiring this up
+
+**`node --test` exits 0 when it finds no test files at all.** Verified on Node
+24.19.0. The first version of `package.json` said `node --test tests/`, which
+would have reported success over nothing from the first commit. And `node --test
+tests/` and `node --test tests` both try to *load* `tests` as a module, exiting 1
+with `MODULE_NOT_FOUND`, so a path argument has to be a glob. `npm test` is
+therefore `node --test "tests/**/*.test.mjs"`, quoted so Node does the globbing on
+every platform rather than `sh` doing it on some and `cmd` failing to on others.
+
+**`npm test` and `npm run check` are deliberately different.** `test` is the
+tolerant form: its consumers test *skips* when no game is checked out beside this
+repo, because `consumers.json` promises the repo stays testable on a partial
+checkout, and a fresh clone or a CI runner has no games. `check` is the strict
+form, `sync.mjs --check`, which exits 2 in that situation. Drift in a real
+consumer fails both.
 
 ## Where it sits, and how a game finds it
 
@@ -415,7 +444,9 @@ scans from `dev\` and can. One apart is the correct state.
 
 In rough order of what buys the most:
 
-1. **`tests/consumers.test.mjs`.** The repo has no automated verification at all.
+1. **CI here.** The 12 tests exist and nothing runs them but a person. A
+   `node --test` job on `ubuntu-latest` is a few lines and would make `npm test`
+   mean something to a reader who has not cloned the repo.
 2. **Wire `sync.mjs --check` into george-boole's CI**, which is the half of the
    drift detection that catches a vendored file edited in the game. Only the
    here-end exists today.

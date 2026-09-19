@@ -17,7 +17,8 @@ shared file with a game's facts baked into it.
 | `native/GameCenterPlugin.swift`, `GameViewController.swift` | **here**, vendored into george-boole, hash-verified |
 | `tools/sync.mjs` | **here**, new; the vendoring and its drift check |
 | `tools/check-metadata.mjs` | **here**, generalized: takes a path, and reads its forbidden keywords from the file being checked |
-| the bundle pipeline (`package.mjs`, 583 lines, 14 transforms) | still in george-boole |
+| `pipeline/index.mjs` | **here** as of 2026-09-19: the machinery and the five transforms both games had written identically. Both now build through it, byte-identical output verified against a hash baseline |
+| the transforms the two games write differently | still in the games: fonts, back-links, the audio drop, the credits block. Four solutions to four problems that only look like one problem, and folding them together would bake one game's markup into a shared file |
 | the four JS shims (scores, achievements, haptics, personal bests) | still in george-boole |
 | the safe-area CSS, generated inside the pipeline | still in george-boole |
 | `tools/screenshots/`, `store/metadata.md`, the icon scripts | still in george-boole |

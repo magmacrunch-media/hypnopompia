@@ -249,3 +249,41 @@ If tips arrive, two things change and both are in this file's scope:
 
 Until then: tips live on magmacrunch.com, where they cost no commission and
 contradict nothing.
+
+### Ads and a paid tier: open, 2026-09-19
+
+Raised and deliberately not decided. Written down because the arguments are
+the same every time and the costs are easy to forget while enthusiastic.
+
+**An ad SDK is a network request, and that is the whole problem.** The build
+fails on any asset that reaches outside the bundle, which is what makes the
+guarantee in 1.4 a checked claim. Ads mean that check stops, "Do you collect
+data? No" becomes a disclosure with a tracking label, and the 4+ rating gets
+more complicated. That is not an argument against ads. It is the price, and it
+is paid in the one asset here that cannot be bought back.
+
+**A paid tier has a shape Apple prefers.** Two listings, one free and one Pro,
+is the old pattern and reads as a duplicate; one free app with a non-consumable
+that removes ads is the modern one. Either way it is StoreKit, the Paid Apps
+agreement, and the bank and tax details in App Store Connect.
+
+**And the website is the asymmetry.** The same game is free in a browser at
+magmacrunch.com/arcade/, generated from the same `web/` the app is derived
+from. Anyone who would pay to remove ads can play the identical game, free and
+ad-free, one search away. That decides which version can carry ads cheaply: the
+site already loads fonts from Google and carries a chat widget, so it has no
+guarantee to lose, and the app has nothing else.
+
+Three coherent positions:
+
+| | What it costs |
+|---|---|
+| **Apps clean, ads on the site** | Nothing structural. The guarantee survives and becomes a reason to install rather than an accident. Tips on the website. |
+| **Free with ads, paid to remove them** | The guarantee, the privacy label, and the build check. Plus an ad SDK, StoreKit, and a rewrite of both listings and both privacy pages. |
+| **Paid app, free on the web** | The cleanest story, and it asks people to pay for what a browser gives away. Works only while the app is meaningfully better: today that is Game Center, haptics and playing with the network off. |
+
+**The order is asymmetric, and that is the only time-sensitive part.** Shipping
+clean keeps every option open: ads or a paid tier can be added to a shipped app
+whenever. Shipping with ads forecloses the clean positioning, because a privacy
+label and a "no ads" line cannot be walked back once people have read them. So
+deciding late is free and deciding early is not.

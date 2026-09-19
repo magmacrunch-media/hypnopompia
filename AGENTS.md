@@ -378,20 +378,31 @@ Line Tools. Commit a **shared** scheme or `-scheme App` does not resolve from a
 fresh clone, and commit `Package.resolved` or a fresh clone resolves different
 versions than the last verified build. Both landed in george-boole on 2026-09-17.
 
-**CI can compile the Swift on a GitHub-hosted `macos-latest` runner, and should.**
+**CI compiles the Swift on a GitHub-hosted `macos-latest` runner, and it lives in
+the game's CI rather than here.** george-boole's `ios-build` job, added 2026-09-18,
+checks the game out with a magmacrunch.com checkout beside it, builds the bundle,
+runs `cap sync`, and does a full `xcodebuild` for a generic iOS Simulator
+destination with signing off. 105 seconds, green on its first run. The vendored
+plugin is compiled as part of the app, which is the only way it *can* be compiled:
+see "What is left" below for why this repo cannot do it alone.
+
 The root CLAUDE.md spends a section on the mirror-image mistake: a self-hosted
 runner was registered for the Wii build that devkitPro publish as a container, and
 the org's Default runner group has `allows_public_repositories = false`, so a
 public repo's job would have queued against a runner it could never be offered.
-The same two facts apply here. Apple's toolchain is on the hosted image, so the
-MacBook is needed for a *device* build and an archive, not for knowing the plugin
-still compiles. Note macOS runner minutes bill at a multiplier on private repos
-and are free on public ones, which is one argument among several for this repo
-being public.
+The same two facts applied here, and the same conclusion held. Apple's toolchain is
+on the hosted image, so the MacBook is needed for a *device* build and an archive,
+not for knowing the plugin still compiles. macOS runner minutes bill at a
+multiplier on private repos and are free on public ones, which is one argument
+among several for this repo being public, and what made it affordable to run that
+job unconditionally rather than behind a path filter.
 
-What CI can check with no Mac at all, and what the tests directory is for: every
-transform against a fixture page, `check-metadata.mjs` against a fixture,
-`sync.mjs --check` across `consumers.json`, and `shellcheck` on `capture.sh`.
+What CI checks here with no Mac at all, in `.github/workflows/ci.yml`: the suite
+on Node 22 and 24, and `sync.mjs --check` against george-boole checked out beside
+it. Still to come, and both waiting on the pipeline moving: every transform
+against a fixture page, and `shellcheck` on `capture.sh`. `check-metadata.mjs`
+runs in the game's CI against the game's real `metadata.md`, which is better than
+a fixture and needed no work here.
 
 ## Line endings: this repo is the tree's worst case
 
@@ -445,28 +456,27 @@ scans from `dev\` and can. One apart is the correct state.
 
 In rough order of what buys the most:
 
-1. **A `macos-latest` job that compiles the plugin.** Not attempted yet, and the
-   reason is worth writing down rather than rediscovering: the plugin cannot be
-   compiled in isolation here. `GameViewController.swift` subclasses
-   `CAPBridgeViewController` and imports UIKit, so it needs an iOS SDK target and
-   Capacitor built for iOS, not a `swift build` on macOS. A `swiftc -parse`
-   syntax check would run without either and would prove almost nothing, since
-   these files change rarely and compiled on a real Mac on 2026-09-17. The
-   version with teeth is a full `xcodebuild` of a game's app, which needs the
-   game, this repo and a magmacrunch.com checkout, and therefore belongs in the
-   game's CI rather than here. macOS runner minutes are free on public repos,
-   which is one of the reasons this one is public.
-2. **`transforms.test.mjs` and fixtures**, once the pipeline moves.
-3. The pipeline, the shims and the template, when a second game needs them.
+1. **`transforms.test.mjs` and fixtures**, once the pipeline moves.
+2. The pipeline, the shims and the template, when a second game needs them.
+
+**The plugin cannot be compiled by this repo alone, and that is settled rather
+than outstanding.** `GameViewController.swift` subclasses `CAPBridgeViewController`
+and imports UIKit, so it needs an iOS SDK target and Capacitor built for iOS, not
+a `swift build` on macOS. A `swiftc -parse` syntax check would run without either
+and prove almost nothing. The version with teeth is a full `xcodebuild` of a
+game's app, needing the game, this repo and a magmacrunch.com checkout, and that
+is exactly what george-boole's `ios-build` job does. **Do not add a macOS job
+here** expecting to compile `native/` in isolation; it is not a gap.
 
 Both ends of the drift check are wired as of 2026-09-18: `drift` in this repo's
 CI catches a change to `native/` that leaves a consumer stale, and `ios-shared`
 in george-boole's CI catches a vendored file edited inside the game. Neither can
 see the other's case, which is why there are two.
 
-Nothing here has been run on a Mac since the extraction. The Swift is
-byte-identical to what george-boole compiled on 2026-09-17, so the risk is
-low, but "the vendored copy still builds" is unverified as of this commit.
+**"The vendored copy still builds" is verified as of 2026-09-18**, and by CI
+rather than by a person on a Mac: george-boole's `ios-build` compiles the app,
+plugin included, on every push. That sentence used to say the opposite and was
+true when written; the extraction landed a day before the job that checks it.
 
 ## AI Attribution
 

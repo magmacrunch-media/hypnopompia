@@ -1,0 +1,5 @@
+node_modules/
+
+# A game's generated bundle never lives here, but a test run may write one.
+tests/tmp/
+*.log

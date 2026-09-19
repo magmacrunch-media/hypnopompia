@@ -1,0 +1,21 @@
+{
+  "name": "hypnopompia",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The iOS shell for magmacrunch arcade games: Game Center plugin, Xcode project, store tooling",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/magmacrunch-media/hypnopompia.git"
+  },
+  "author": "magmacrunch media",
+  "homepage": "https://magmacrunch.com",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "node tools/sync.mjs --check",
+    "test": "node tools/sync.mjs --check"
+  }
+}

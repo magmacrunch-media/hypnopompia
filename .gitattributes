@@ -1,0 +1,25 @@
+# What is committed is LF. This repo is the tree's worst case for line endings:
+# capture.sh runs on macOS, where a CRLF shell script fails with an error that
+# names nothing useful, and `core.autocrlf` is `true` on the Windows dev box and
+# does NOT normalise on the way in (see the root CLAUDE.md, which documents CRLF
+# blobs reaching origin twice). Unlike the other repos here, this one states the
+# intent AND enforces it.
+* text=auto eol=lf
+
+# Executed or parsed by macOS toolchains. A CR in any of these is a build break,
+# not a cosmetic diff.
+*.sh        text eol=lf
+*.swift     text eol=lf
+*.mjs       text eol=lf
+*.js        text eol=lf
+*.plist     text eol=lf
+*.entitlements text eol=lf
+*.pbxproj   text eol=lf
+*.xcscheme  text eol=lf
+*.storyboard text eol=lf
+
+# Binary, so never touched.
+*.png       binary
+*.woff2     binary
+*.ttf       binary
+*.ico       binary

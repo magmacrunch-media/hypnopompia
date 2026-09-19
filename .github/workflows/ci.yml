@@ -1,0 +1,86 @@
+# Two jobs, and the second one could not exist before this repo did.
+#
+# `tests` runs the suite that asserts sync.mjs's exit codes. There is nothing to
+# install: this repo has no dependencies at all, runtime or dev, and the tests
+# use only node builtins. So no `npm ci`, and no lockfile to keep current.
+#
+# `drift` is the half of the vendoring check that this repo can see. A file in
+# native/ changed here and never synced out is invisible from the game, which
+# verifies clean against its own copy forever, so it has to be caught at the
+# moment the change lands. The mirror half, a vendored file edited inside a game,
+# is caught by the same command in that game's own CI.
+#
+# The checkout layout is deliberate. consumers.json names its consumers as
+# ../../games/<game>, which is the grouped dev tree, so the two checkouts are
+# placed to reproduce that rather than being passed as explicit paths. CI then
+# exercises consumers.json itself -- the file that actually goes stale -- instead
+# of a path this workflow would have to keep correct. Same reasoning as the
+# wii-build job in the games' CI, which checks the engine out beside the game so
+# the Makefile resolves it through its own documented default.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Lets CI be run against a branch without opening a pull request first.
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: tests (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      # Both legs should report, because the point of the matrix is to notice
+      # the runner itself behaving differently between versions. That is not
+      # hypothetical here: the two `node --test` traps in AGENTS.md were found
+      # on 24.19.0, and nothing says 22 answers identically.
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+
+      # `node --test` exits 0 when it finds no test files at all, verified on
+      # 24.19.0. So an empty, renamed or unmerged tests/ would pass this job in
+      # silence. Two lines, against the exact failure the suite below is about.
+      - name: There are test files to run
+        run: test -n "$(find tests -name '*.test.mjs' -print -quit)"
+
+      - run: npm test
+
+  drift:
+    name: vendored Swift matches a real consumer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out this repo where consumers.json expects it
+        uses: actions/checkout@v7
+        with:
+          path: engines/hypnopompia
+
+      # Tracks main rather than a pinned ref, deliberately. A change to native/
+      # that leaves the published game stale should redden this repo on the day
+      # it lands, not at whatever later moment somebody happens to look.
+      - name: Check out the consumer beside it
+        uses: actions/checkout@v7
+        with:
+          repository: magmacrunch-media/george-boole
+          path: games/george-boole
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # `npm run check`, not `npm test`. They differ on purpose: the suite's
+      # consumers test SKIPS when no game is checked out, because consumers.json
+      # promises this repo stays testable on a partial checkout. That tolerance
+      # is wrong here, where a checkout step silently failing to place the game
+      # would then read as a pass. `check` exits 2 on zero comparisons.
+      - name: sync.mjs --check
+        working-directory: engines/hypnopompia
+        run: npm run check

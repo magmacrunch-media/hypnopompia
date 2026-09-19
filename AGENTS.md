@@ -133,6 +133,7 @@ anything is written; see "What has landed and what has not" above.
 + .gitignore
 + consumers.json          every game repo with an ios/, relative to this root
 + package.json            private, not published
++ .github/workflows/ci.yml  tests on node 22 and 24; drift against a real consumer
 
 - lib/
 -   bundle.mjs            web/ -> www/. The pipeline. Takes a game's config.
@@ -444,14 +445,24 @@ scans from `dev\` and can. One apart is the correct state.
 
 In rough order of what buys the most:
 
-1. **CI here.** The 12 tests exist and nothing runs them but a person. A
-   `node --test` job on `ubuntu-latest` is a few lines and would make `npm test`
-   mean something to a reader who has not cloned the repo.
-2. **Wire `sync.mjs --check` into george-boole's CI**, which is the half of the
-   drift detection that catches a vendored file edited in the game. Only the
-   here-end exists today.
-3. **A `macos-latest` job that compiles the plugin**, per the section above.
-4. The pipeline, the shims and the template, when a second game needs them.
+1. **A `macos-latest` job that compiles the plugin.** Not attempted yet, and the
+   reason is worth writing down rather than rediscovering: the plugin cannot be
+   compiled in isolation here. `GameViewController.swift` subclasses
+   `CAPBridgeViewController` and imports UIKit, so it needs an iOS SDK target and
+   Capacitor built for iOS, not a `swift build` on macOS. A `swiftc -parse`
+   syntax check would run without either and would prove almost nothing, since
+   these files change rarely and compiled on a real Mac on 2026-09-17. The
+   version with teeth is a full `xcodebuild` of a game's app, which needs the
+   game, this repo and a magmacrunch.com checkout, and therefore belongs in the
+   game's CI rather than here. macOS runner minutes are free on public repos,
+   which is one of the reasons this one is public.
+2. **`transforms.test.mjs` and fixtures**, once the pipeline moves.
+3. The pipeline, the shims and the template, when a second game needs them.
+
+Both ends of the drift check are wired as of 2026-09-18: `drift` in this repo's
+CI catches a change to `native/` that leaves a consumer stale, and `ios-shared`
+in george-boole's CI catches a vendored file edited inside the game. Neither can
+see the other's case, which is why there are two.
 
 Nothing here has been run on a Mac since the extraction. The Swift is
 byte-identical to what george-boole compiled on 2026-09-17, so the risk is

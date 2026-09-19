@@ -12,6 +12,11 @@ platform. This repo holds what every App Store build needs and no game should
 have to reinvent: a plugin, a project, a pipeline and a checklist that fails
 loudly.
 
+`HOUSE.md` is the other half of that: what the games have in common on purpose,
+so the fourth one feels like the first two. It is product rather than plumbing,
+and it is written from what two shipped games already do rather than from a
+wish list.
+
 ## What is here
 
 | | |

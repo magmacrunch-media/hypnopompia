@@ -1,6 +1,7 @@
 {
   "comment": "Every game repo that vendors native/ from this repo, relative to this root. `node tools/sync.mjs --check` verifies each one it can find is still byte-identical -- that is what catches a change made HERE and never synced OUT, which is the drift a game cannot detect for itself. A path that does not exist is skipped and reported, not failed, so this repo stays checkable on a machine holding only some of the games. Add a line when a game gains an ios/.",
   "paths": [
-    "../../games/george-boole"
+    "../../games/george-boole",
+    "../../games/makemecookies"
   ]
 }

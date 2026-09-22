@@ -57,12 +57,23 @@ export function resolveShell(repo) {
  * It differs per game because it is the arcade engine that game uses, and a
  * game that probed for an engine it does not use would accept a checkout that
  * cannot build it.
+ *
+ * The other three options exist for the one consumer that is not a game. An
+ * arcade game keeps its page in `web/` and names the website's
+ * `arcade/shared/` as `../shared/`, which is what every default below says.
+ * A ware tool (apps/crunchscope) keeps its page in `app/` and names
+ * `ware/shell/` as `../shell/`, so it passes `web: 'app'`,
+ * `sharedDir: 'ware/shell'` and `sharedName: 'shell'`. A game passes none of
+ * them and gets exactly the bundle it got before they existed.
  */
-export function createBuild({ ios, probe }) {
+export function createBuild({
+  ios, probe, web = 'web', sharedDir = 'arcade/shared', sharedName = 'shared',
+}) {
   const IOS = ios;
   const REPO = resolve(IOS, '..');
-  const WEB = join(REPO, 'web');
+  const WEB = join(REPO, web);
   const OUT = join(IOS, 'www');
+  const sharedRef = new RegExp(`\\.\\./${sharedName}/([A-Za-z0-9._-]+)`, 'g');
 
   function die(msg, detail) {
     console.error(`\npackage.mjs: ${msg}`);
@@ -81,18 +92,18 @@ export function createBuild({ ios, probe }) {
     if (process.env.WEBSITE) roots.push(resolve(process.env.WEBSITE));
     roots.push(resolve(REPO, '..', 'website'));
     roots.push(resolve(REPO, '..', '..', 'web', 'website'));
-    const found = roots.find((r) => existsSync(join(r, 'arcade', 'shared', probe)));
+    const found = roots.find((r) => existsSync(join(r, ...sharedDir.split('/'), probe)));
     if (!found) {
       die(
         'no website checkout found.',
-        `The shared arcade scripts and the self-hosted fonts live there, not in this repo.\nLooked in:\n${roots.map((r) => `  ${r}`).join('\n')}\nSet WEBSITE=<path to the magmacrunch.com checkout> to look elsewhere.`
+        `The shared scripts (${sharedDir}/) and the self-hosted fonts live there, not in this repo.\nLooked in:\n${roots.map((r) => `  ${r}`).join('\n')}\nSet WEBSITE=<path to the magmacrunch.com checkout> to look elsewhere.`
       );
     }
     return found;
   }
 
   const website = findWebsite();
-  const shared = join(website, 'arcade', 'shared');
+  const shared = join(website, ...sharedDir.split('/'));
   const siteFonts = join(website, 'fonts');
 
   /** Apply one named edit to a file in `www/` other than the page, no-op fatal. */
@@ -171,23 +182,23 @@ export function createBuild({ ios, probe }) {
    * game. Refusing to guess is the only option that cannot ship a surprise.
    */
   function checkAllowlist(state, allow) {
-    const asked = [...state.html.matchAll(/\.\.\/shared\/([A-Za-z0-9._-]+)/g)].map((m) => m[1]);
+    const asked = [...state.html.matchAll(sharedRef)].map((m) => m[1]);
     const unknown = [...new Set(asked)].filter((f) => !(f in allow));
     if (unknown.length) {
       die(
         `web/index.html names ${unknown.length} shared file(s) this script does not know about:`,
-        `${unknown.map((f) => `  ../shared/${f}`).join('\n')}\n\nDecide what each one is and add it to SHARED as 'vendor' or 'drop'.\nRefusing to guess: vendoring an unread script could ship anything the\narcade picked up, and dropping it silently could break the game.`
+        `${unknown.map((f) => `  ../${sharedName}/${f}`).join('\n')}\n\nDecide what each one is and add it to SHARED as 'vendor' or 'drop'.\nRefusing to guess: vendoring an unread script could ship anything the\narcade picked up, and dropping it silently could break the game.`
       );
     }
   }
 
   function vendorShared(allow) {
-    mkdirSync(join(OUT, 'shared'), { recursive: true });
+    mkdirSync(join(OUT, sharedName), { recursive: true });
     const vendored = Object.keys(allow).filter((f) => allow[f] === 'vendor');
     for (const f of vendored) {
       const src = join(shared, f);
       if (!existsSync(src)) die(`shared asset missing from the website checkout: ${src}`);
-      cpSync(src, join(OUT, 'shared', f));
+      cpSync(src, join(OUT, sharedName, f));
     }
     return vendored;
   }
@@ -253,7 +264,7 @@ export function createBuild({ ios, probe }) {
   }
 
   return {
-    IOS, REPO, WEB, OUT, website, shared, siteFonts,
+    IOS, REPO, WEB, OUT, website, shared, siteFonts, sharedName,
     die, editFile, edit, copyWeb, openPage, writePage,
     checkAllowlist, vendorShared, copyShims, copyFonts, sweepSelfContained,
   };
@@ -287,7 +298,7 @@ export const transforms = {
 
   pointSharedAssets: (b, state) =>
     b.edit(state, 'point shared assets at the bundle', (html) =>
-      html.replace(/\.\.\/shared\//g, 'shared/')
+      html.split(`../${b.sharedName}/`).join(`${b.sharedName}/`)
     ),
 
   /** A bundle ships its assets; a stamp is a cache trick a bundle has no use for. */

@@ -38,6 +38,20 @@
  *
  * Anywhere in the file, comma-separated, matched as whole words in the Keywords
  * field only.
+ *
+ * ## The one thing this file does hardcode, and why it is not a game's fact
+ *
+ * The publisher is the same for every consumer, so `## Copyright` is checked
+ * against `<year> magmacrunch media` here rather than restated per game. The
+ * year is a per-release fact and stays free; the casing is a house fact, and a
+ * shared checker is the right place for it. HOUSE.md carries the same rule in
+ * prose, and lists the four legitimate spellings of the name.
+ *
+ * Headings without a `(n)` are read too, for this. They were invisible before:
+ * `## Copyright`, `## Support URL` and `## Category` never became fields at
+ * all, so the copyright string was the one piece of branding in this file that
+ * nothing could see. Both games happened to agree; nothing was holding them to
+ * it.
  */
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -71,8 +85,14 @@ const FILE = resolveTarget(process.argv[2]);
 const text = readFileSync(FILE, 'utf8');
 const lines = text.split(/\r?\n/);
 
-/** Headings of the form `## Name (30)` -- the ones with a counted limit. */
-const HEADING = /^##\s+(.+?)\s+\((\d+)\)\s*$/;
+/**
+ * Headings of the form `## Name (30)`, and the uncounted ones like
+ * `## Copyright`. `m[2]` is the limit, or undefined where there is none.
+ *
+ * Matching both also means the block reader below stops at an uncounted
+ * heading, which it did not do before.
+ */
+const HEADING = /^##\s+(.+?)(?:\s+\((\d+)\))?\s*$/;
 
 /** `<!-- forbid-keywords: 2048, something -->`, declared by the game. */
 const forbidden = [...text.matchAll(/<!--\s*forbid-keywords:\s*([^>]*?)\s*-->/gi)]
@@ -105,16 +125,37 @@ for (let i = 0; i < lines.length; i += 1) {
     }
   }
 
-  fields.push({ name: m[1], limit: Number(m[2]), value: body.join('\n').trim() });
+  const limit = m[2] === undefined ? null : Number(m[2]);
+  fields.push({ name: m[1], limit, value: body.join('\n').trim() });
 }
 
-if (fields.length === 0) {
+// It is the COUNTED fields whose absence means the heading format changed, so
+// this guard keeps its original subject rather than widening to all headings.
+const counted = fields.filter((f) => f.limit !== null);
+if (counted.length === 0) {
   console.error(`no counted fields found in ${FILE}; has the heading format changed?`);
   process.exit(1);
 }
 
+/** The house copyright line. The year is the game's; the name is not. */
+const COPYRIGHT = /^\d{4} magmacrunch media$/;
+const isCopyright = (name) => /^copyright$/i.test(name);
+
 let failed = 0;
 for (const f of fields) {
+  if (f.limit === null) {
+    // Nothing to count against; only the house rules apply.
+    if (isCopyright(f.name)) {
+      const ok = COPYRIGHT.test(f.value);
+      if (!ok) failed += 1;
+      console.log(`${ok ? '  ok ' : 'WRONG'} ${f.name.padEnd(18)} ${f.value}`);
+      if (!ok) {
+        console.log('       copyright: expected "<year> magmacrunch media" -- lowercase,');
+        console.log('       no (c), and not the word Copyright. See HOUSE.md.');
+      }
+    }
+    continue;
+  }
   const n = [...f.value].length;
   const over = n > f.limit;
   if (over) failed += 1;
@@ -135,11 +176,20 @@ for (const f of fields) {
   }
 }
 
+// App Store Connect requires a copyright, so its absence is a failure rather
+// than something to pass over quietly. A check that passes by finding nothing
+// is the failure mode this repo exists to avoid.
+if (!fields.some((f) => isCopyright(f.name))) {
+  console.log('MISS  Copyright          no ## Copyright heading in this file');
+  failed += 1;
+}
+
 if (failed) {
   console.error(`\n${failed} problem(s) in ${FILE}`);
   process.exit(1);
 }
 console.log(
-  `\n${fields.length} field(s) within their limits.` +
-    (forbidden.length ? ` ${forbidden.length} forbidden keyword(s) absent.` : '')
+  `\n${counted.length} field(s) within their limits.` +
+    (forbidden.length ? ` ${forbidden.length} forbidden keyword(s) absent.` : '') +
+    ' Copyright as HOUSE.md has it.'
 );

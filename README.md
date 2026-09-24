@@ -5,7 +5,7 @@ App Store build, the native Game Center plugin, and the store tooling.
 
 Named after "Hypnopompia" by Texas Hold'Em Lava Dome, from *Pompous Fanfare for
 All Occasions* (2019), published by magmacrunch music.
-[Adenosine](https://github.com/magmacrunchmedia/adenosine) is the molecule
+[Adenosine](https://github.com/magmacrunch-media/adenosine) is the molecule
 that builds sleep pressure; hypnopompia is surfacing out of it.
 
 **It runs no game logic.** A game's rules live in that game's repo, once per

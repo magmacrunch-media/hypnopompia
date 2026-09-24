@@ -116,13 +116,61 @@ is named, because the reason is what survives a rewrite.
   at 100 plus one at 300 would have been refused by the form; makemecookies
   uses 610 of 1000 so a ninth needs no re-pointing.
 
+### How the publisher is spelled
+
+Three forms are in use and each has exactly one job. Nothing visual catches a
+wrong one, so it is written down rather than remembered.
+
+| Form | Where |
+|---|---|
+| `magmacrunch media` | the `## Copyright` field, every `LICENSE` and `NOTICE` in the tree, the title card, the credits |
+| `MAGMACRUNCH MEDIA` | the splash/launch image publisher line, and nowhere else |
+| `MAGMACRUNCH MEDIA LLC` | the App Store **seller name**, exactly as Pennsylvania has it, `LLC` and its spacing included |
+
+- **The copyright field is `<year> magmacrunch media`** -- lowercase, no `(c)`,
+  and not the word "Copyright", which the form supplies. Both games write
+  `2026 magmacrunch media`, and `tools/check-metadata.mjs` fails a consumer
+  that writes anything else. The year is a per-release fact and stays free; the
+  publisher is a house fact, which is the part a shared checker is entitled to
+  know.
+- **There is no title-case form any more.** The Apache-2.0 `LICENSE` and
+  `NOTICE` of the two shared engines read `Magma Crunch Media` until 2026-09-24:
+  34 occurrences across adenosine and hypnopompia, matching neither the display
+  name nor the registered entity, and shipping inside seven published
+  `@magmacrunch/*` npm packages. They were unified to lowercase, so one spelling
+  now covers every licence file in the tree. Beware that `Texas Toast Magma
+  Crunch` is a song title and not this name.
+- **No slash styling.** `CRUNCH//SCOPE` is a wordmark belonging to one ware
+  tool. No game uses one and nothing makes it house style.
+- The legal entity and the seller name are account-level facts rather than a
+  game's. The enrollment record -- the D-U-N-S request, the paused-on-purpose
+  decision of 2026-09-19, and the comma D&B inserts before `LLC` that the
+  registration does not have -- stays in
+  `games/george-boole/ios/store/enrollment.md`.
+
 ### The publisher's mark
 
 `web/img/mc-logo.png`, white, at the foot of the title card, with
-"magmacrunch media" beside it at 7px. **A link on the web and plain text in the
-app**: `package.mjs` unlinks it, and that transform goes BEFORE the one that
-makes outbound links open Safari. A player who has not started yet should not
-be one mis-tap from a browser.
+"magmacrunch media" at 7px. **The mark sits ABOVE the name, not beside it**:
+stacked, it reads as a signature block rather than as a line of text with a
+bullet in front of it, and the logo gets room to be a shape instead of sharing
+32px of height with the words. Both games were changed to this on 2026-09-22;
+this file said "beside" until then, which is why it is stated here in the same
+words both stylesheets use.
+
+**A link on the web and plain text in the app**: `package.mjs` unlinks it, and
+that transform goes BEFORE the one that makes outbound links open Safari. A
+player who has not started yet should not be one mis-tap from a browser.
+
+**The two pipelines unlink it differently, so style the container, not the
+link.** george-boole UNWRAPS the `<a>` -- the element goes, and the class with
+it -- while makemecookies replaces it with a `<span>` that keeps
+`.title-publisher-link`. A rule written only on that class changes the website
+and leaves george-boole's app alone, silently, because the selector matches
+nothing there. george-boole therefore repeats the stacking on
+`.title-publisher`, which is not redundant. Both stylesheets say so at the
+rule: `games/george-boole/web/css/modal-title.css` and
+`games/makemecookies/web/css/title.css`.
 
 Do not also name the publisher in a tagline above it. makemecookies said
 "a magmacrunch media cookie factory" eight pixels above the mark that says

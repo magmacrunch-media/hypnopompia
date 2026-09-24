@@ -112,6 +112,14 @@ is named, because the reason is what survives a rewrite.
 - **Every Game Center id is permanent and a deleted one cannot be reused.**
   Write the table into the game's `ios/AGENTS.md` and check it against the shim
   before creating anything in App Store Connect.
+- **Commit `App.entitlements` with the Game Center key from the start**, before
+  there is an account to enable the capability on. A device build or an archive
+  then fails by name on the entitlement, which is a legible failure and easy to
+  act on. The alternative was tried: with no entitlements file the archive
+  succeeds and Game Center sign-in fails at runtime instead, naming nothing.
+  Loud and early beats quiet and late. CI is indifferent either way, because a
+  simulator build signs ad hoc and `ios-build` passes `CODE_SIGNING_ALLOWED=NO`.
+  The two games answered this differently until 2026-09-24.
 - Achievement points: leave headroom under the 1000 cap. george-boole's eight
   at 100 plus one at 300 would have been refused by the form; makemecookies
   uses 610 of 1000 so a ninth needs no re-pointing.

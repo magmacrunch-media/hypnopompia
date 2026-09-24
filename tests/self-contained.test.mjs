@@ -71,3 +71,48 @@ test('the label says which kind of escape it is', () => {
   ]);
   assert.deepEqual(outsideRefs('<script src="js/a.js"></script>'), []);
 });
+
+/**
+ * A `..` is judged against the file it is written in.
+ *
+ * The CSS rules above were added because an @font-face reaches out through
+ * url() and nothing looked at url(). They then flagged `../fonts/x.woff2`
+ * inside `css/ios.css`, which is `fonts/x.woff2` in the bundle and present:
+ * apps/crunchscope's own stylesheet and the vendored `shell/fonts.css` both
+ * write it that way, and both failed a sweep over files that were there.
+ *
+ * Judging the path rather than the `..` is the difference between a check
+ * that means something and one somebody deletes.
+ */
+test('a relative path is resolved against the file it appears in', () => {
+  const css = "  src: url('../fonts/PressStart2P-Regular.woff2') format('woff2');";
+
+  // One level down: ../fonts is a sibling folder inside the bundle.
+  assert.deepEqual(outsideRefs(css, 'css/ios.css'), []);
+  assert.deepEqual(outsideRefs(css, 'shell/fonts.css'), []);
+
+  // At the root, or deeper than the path climbs, it really does leave.
+  assert.deepEqual(outsideRefs(css, 'ios.css'), [
+    'reaches outside the bundle, through a CSS url()',
+  ]);
+  assert.deepEqual(outsideRefs("  src: url('../../fonts/x.woff2');", 'css/ios.css'), [
+    'reaches outside the bundle, through a CSS url()',
+  ]);
+
+  // The page at the root asking for the arcade's shared folder: the case all
+  // of this exists for.
+  assert.deepEqual(outsideRefs('<script src="../shared/adenosine-audio.js"></script>', 'index.html'), [
+    'reaches outside the bundle',
+  ]);
+
+  // A deep file may still reach a real sibling, and may not climb past root.
+  assert.deepEqual(outsideRefs('<img src="../img/mark.png">', 'pages/about.html'), []);
+  assert.deepEqual(outsideRefs('<img src="../../img/mark.png">', 'pages/about.html'), [
+    'reaches outside the bundle',
+  ]);
+
+  // The network rules do not care where the file sits.
+  assert.deepEqual(outsideRefs('  src: url(https://fonts.gstatic.com/x.woff2);', 'css/ios.css'), [
+    'loads an asset over the network, through a CSS url()',
+  ]);
+});

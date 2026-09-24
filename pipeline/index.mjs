@@ -73,19 +73,64 @@ import { join, relative, resolve } from 'node:path';
  * so a rule that flagged them would fail every build and teach the next person
  * to delete the check.
  */
-export function outsideRefs(line) {
-  const CHECKS = [
-    [/(?:src|href)\s*=\s*["']\.\.\//, 'reaches outside the bundle'],
+/**
+ * `from` is the file's own path inside the bundle, and a `../` is judged
+ * against it rather than on sight.
+ *
+ * A path that starts with `..` does not necessarily leave the bundle: it
+ * leaves the FILE'S DIRECTORY, and whether that is outside depends on how
+ * deep the file sits. `www/css/ios.css` asking for `../fonts/x.woff2` means
+ * `www/fonts/x.woff2`, which is in the bundle and is exactly how a stylesheet
+ * one level down refers to a sibling folder -- apps/crunchscope's own CSS and
+ * the vendored `shell/fonts.css` both do it, and both were failing this sweep
+ * on 2026-09-24 over files that were present.
+ *
+ * Called without `from`, every `..` escapes, which is the behaviour this had
+ * before and remains right for a file at the root.
+ */
+export function outsideRefs(line, from = '') {
+  const dir = from.includes('/') ? from.slice(0, from.lastIndexOf('/')) : '';
+
+  /** Does `path`, resolved against this file's directory, leave the bundle? */
+  function escapes(path) {
+    const parts = dir ? dir.split('/') : [];
+    for (const segment of path.split('/')) {
+      if (segment === '..') {
+        if (!parts.length) return true;   // stepped above the bundle root
+        parts.pop();
+      } else if (segment && segment !== '.') {
+        parts.push(segment);
+      }
+    }
+    return false;
+  }
+
+  /** Any relative path this rule matches that really does leave. */
+  const leaves = (re) => {
+    for (const match of line.matchAll(re)) {
+      if (escapes(match[1])) return true;
+    }
+    return false;
+  };
+
+  const RELATIVE = [
+    [/(?:src|href)\s*=\s*["'](\.\.\/[^"']*)/g, 'reaches outside the bundle'],
+    [/url\(\s*["']?(\.\.\/[^"')]*)/gi, 'reaches outside the bundle, through a CSS url()'],
+    [/@import\s+["']\s*(\.\.\/[^"']*)/gi, 'reaches outside the bundle, through an @import'],
+  ];
+  const NETWORK = [
     [
       /<(?:script|link|img|source|video|audio)\b[^>]*(?:src|href)\s*=\s*["']https?:/i,
       'loads an asset over the network',
     ],
-    [/url\(\s*["']?\.\.\//i, 'reaches outside the bundle, through a CSS url()'],
     [/url\(\s*["']?https?:/i, 'loads an asset over the network, through a CSS url()'],
-    [/@import\s+["']\s*\.\.\//i, 'reaches outside the bundle, through an @import'],
     [/@import\s+["']\s*https?:/i, 'loads an asset over the network, through an @import'],
   ];
-  return CHECKS.filter(([re]) => re.test(line)).map(([, what]) => what);
+
+  return [
+    ...RELATIVE.filter(([re]) => leaves(re)).map(([, what]) => what),
+    ...NETWORK.filter(([re]) => re.test(line)).map(([, what]) => what),
+  ];
 }
 
 export function resolveShell(repo) {
@@ -290,7 +335,7 @@ export function createBuild({
         readFileSync(p, 'utf8')
           .split('\n')
           .forEach((line, i) => {
-            for (const what of outsideRefs(line)) {
+            for (const what of outsideRefs(line, rel)) {
               offences.push(`${rel}:${i + 1}  ${what}: ${line.trim()}`);
             }
           });

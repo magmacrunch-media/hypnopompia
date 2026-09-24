@@ -266,13 +266,43 @@ the next sync carries it into `web/`, and it ships.
 |---|---|---|
 | `SHARED` is an **allowlist** | `index.html` names a `../shared/` file the config does not classify as `vendor` or `drop` | Defaulting to vendor could bundle an unread script; defaulting to drop could silently break the game. Refusing to guess is the only default that cannot ship a surprise. |
 | **a transform that matches nothing is fatal** | a regex stops matching because the markup moved | Otherwise the app keeps whatever the step was there to remove and the build still says it succeeded. Applies to `index.html` and to any other file the build edits. |
-| the **self-contained sweep** | any `src`/`href` starts `../`, or any `<script>`/`<link>`/`<img>`/`<source>` fetches over `http(s)` | The claim being made is that the bundle runs with the network off. Guideline 4.2 treats a page that needs a server as a web page in a wrapper. Check the claim, do not assert it. |
+| the **self-contained sweep** | any `src`/`href` starts `../`, any `<script>`/`<link>`/`<img>`/`<source>` fetches over `http(s)`, or any CSS `url()` or `@import` does either | The claim being made is that the bundle runs with the network off. Guideline 4.2 treats a page that needs a server as a web page in a wrapper. Check the claim, do not assert it. **The CSS half was missing until 2026-09-23** and is the guard's own failure mode caught in itself: it read attributes, an `@font-face` reaches out through `url()`, and so a sweep that looked at nothing relevant reported nothing wrong. See below. |
 | the `.ogg` drop **asserts it dropped something** | the audio layout changes | Finding none means the assumption changed, not that the step is obsolete. |
 | **version agreement** | `MARKETING_VERSION` or `CURRENT_PROJECT_VERSION` differ between build configurations | The credits would show whichever configuration happened to be built. Read the version from `project.pbxproj`, never retype it. |
 | **required assets** | `assets/apple-touch-icon.png` is missing | It is the only way to test a bundle on a phone without a Mac. |
 | `check-metadata.mjs` | any `store/metadata.md` field exceeds Apple's limit | The form truncates or refuses at the moment of paste, which is the worst moment to be rewriting a description. Keywords count their commas, and a space after a comma costs a character for nothing. |
 | **an unstamped template** | a game's bundle id, display name or team still holds a placeholder | New. The bundle id is permanent after the first submission; a placeholder reaching App Store Connect cannot be undone. |
 | `sync.mjs --check` | a vendored Swift file was edited in the game, or changed here and never synced out | magma-kit's lesson: vendoring rots from both ends, and only the side that can see each end can catch it. Run `--check` per game in the game's own CI, and across `consumers.json` here. |
+
+### The sweep was blind to CSS, and it took a font to show it
+
+The rules live in `outsideRefs()`, exported from `pipeline/index.mjs` and
+tested on strings in `tests/self-contained.test.mjs`. They are a pure function
+on one line for a reason: the walking of the bundle is not the part that can go
+wrong quietly, the matching is. A rule that stops matching does not fail, it
+reports nothing, and nothing is exactly what a clean bundle reports.
+
+For as long as every outside reference was a tag, reading `src=` and `href=`
+was the whole story. An `@font-face` is not a tag. When makemecookies moved to
+self-hosted faces on 2026-09-23 it put `url('../../fonts/...')` into a page for
+the first time, and the sweep could not see that class of path at all. What
+actually stood behind it was the no-op-is-fatal rule in `edit()`, which does
+catch a path rewrite that stops matching but is a different guard for a
+different failure and was never meant to cover this.
+
+`@import` is handled in both spellings, because `@import url(...)` is caught by
+the `url()` rules and `@import "../x.css"` is not.
+
+**`url(data:...)` and `url(#fragment)` must never match.** Both are ordinary
+here -- the games' favicons are data URIs, their filters point at fragments --
+and a rule that flagged them would fail every build and teach the next person
+to delete the check rather than the rule. There are negative tests for exactly
+this.
+
+Verified by planting `url('../../fonts/nope.png')` in a game's CSS and watching
+the build stop, naming the file, the line and which kind of escape it was.
+Both games' bundles were built against the tightened rules first: neither had
+an offending path, so this tightened a guard without moving any consumer.
 
 `consumers.json` skips a path that is not checked out and reports it rather than
 failing, so this repo stays checkable on a machine holding only some of the

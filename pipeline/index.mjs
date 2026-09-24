@@ -42,6 +42,52 @@ import { join, relative, resolve } from 'node:path';
  * find magnolia. Exported so a game's package.mjs can call it before importing
  * anything else from here.
  */
+/**
+ * Every way one line of a bundled text file can name something outside the
+ * bundle. Returns a label per offence, empty when the line is clean.
+ *
+ * Exported and pure so it can be tested on strings, which matters more here
+ * than it looks: this is the check the store listings' "makes no network
+ * requests" claim rests on, and a sweep that quietly stops matching reads
+ * exactly like a bundle that has nothing to report.
+ *
+ * ## The CSS entries were added on 2026-09-23, and were a real hole
+ *
+ * The first two rules read `src=` and `href=` attributes, so for as long as
+ * every outside reference was a tag, they were the whole story. An
+ * `@font-face` is not a tag: it reaches out through `url()`, and nothing here
+ * looked at `url()`. makemecookies self-hosting its two faces is what put such
+ * a path into a bundle for the first time, and the only thing standing behind
+ * it was the no-op-is-fatal rule in `edit()` -- which does catch a rewrite that
+ * stops matching, but is a different guard for a different failure and was
+ * never meant to cover this.
+ *
+ * `@import` is here for the same reason in its other spelling: `@import
+ * url(...)` is caught by the url() rules, and `@import "../x.css"` is not.
+ *
+ * ## What must NOT match
+ *
+ * `url(data:...)` carries its bytes with it and `url(#glow)` points inside the
+ * document, so neither leaves the bundle. Both are ordinary in this arcade's
+ * CSS -- the games' favicons are data URIs and their filters use fragments --
+ * so a rule that flagged them would fail every build and teach the next person
+ * to delete the check.
+ */
+export function outsideRefs(line) {
+  const CHECKS = [
+    [/(?:src|href)\s*=\s*["']\.\.\//, 'reaches outside the bundle'],
+    [
+      /<(?:script|link|img|source|video|audio)\b[^>]*(?:src|href)\s*=\s*["']https?:/i,
+      'loads an asset over the network',
+    ],
+    [/url\(\s*["']?\.\.\//i, 'reaches outside the bundle, through a CSS url()'],
+    [/url\(\s*["']?https?:/i, 'loads an asset over the network, through a CSS url()'],
+    [/@import\s+["']\s*\.\.\//i, 'reaches outside the bundle, through an @import'],
+    [/@import\s+["']\s*https?:/i, 'loads an asset over the network, through an @import'],
+  ];
+  return CHECKS.filter(([re]) => re.test(line)).map(([, what]) => what);
+}
+
 export function resolveShell(repo) {
   const roots = [];
   if (process.env.HYPNOPOMPIA) roots.push(resolve(process.env.HYPNOPOMPIA));
@@ -244,11 +290,8 @@ export function createBuild({
         readFileSync(p, 'utf8')
           .split('\n')
           .forEach((line, i) => {
-            if (/(?:src|href)\s*=\s*["']\.\.\//.test(line)) {
-              offences.push(`${rel}:${i + 1}  reaches outside the bundle: ${line.trim()}`);
-            }
-            if (/<(?:script|link|img|source|video|audio)\b[^>]*(?:src|href)\s*=\s*["']https?:/i.test(line)) {
-              offences.push(`${rel}:${i + 1}  loads an asset over the network: ${line.trim()}`);
+            for (const what of outsideRefs(line)) {
+              offences.push(`${rel}:${i + 1}  ${what}: ${line.trim()}`);
             }
           });
       }

@@ -158,6 +158,7 @@ anything is written; see "What has landed and what has not" above.
 -   new-game-ios.mjs      stamp template/ into games/<game>/ios/
 +   sync.mjs              vendor native/ into a game; --check is a hash compare
 +   check-metadata.mjs    a game's metadata.md against App Store Connect's limits
++   check-game-center.mjs a game's Game Center ids and art, before any are created
 -   screenshots/
 -     capture.sh          simctl: boot, inject, freeze the clock, shoot
 -     shots.js            drives the real UI; the staging half
@@ -273,6 +274,7 @@ the next sync carries it into `web/`, and it ships.
 | `check-metadata.mjs` | any `store/metadata.md` field exceeds Apple's limit | The form truncates or refuses at the moment of paste, which is the worst moment to be rewriting a description. Keywords count their commas, and a space after a comma costs a character for nothing. |
 | **an unstamped template** | a game's bundle id, display name or team still holds a placeholder | New. The bundle id is permanent after the first submission; a placeholder reaching App Store Connect cannot be undone. |
 | `sync.mjs --check` | a vendored Swift file was edited in the game, or changed here and never synced out | magma-kit's lesson: vendoring rots from both ends, and only the side that can see each end can catch it. Run `--check` per game in the game's own CI, and across `consumers.json` here. |
+| `check-game-center.mjs` | a Game Center id is malformed or duplicated, an achievement has no image, or an image is not 1024x1024 RGB | Every id is permanent and a deleted one cannot be reused, so the check has to happen before creation rather than after a mistake. It reads the art filenames rather than the shims, because the two games compose their ids differently and a shared checker cannot know one game's shape. Exits **2** when there is nothing to check: a game with no art directory cannot create its achievements at all, and that must not read as a pass. |
 
 ### The sweep was blind to CSS, and it took a font to show it
 

@@ -102,7 +102,7 @@ to the game.
 magma-kit byte-copies everything into consumers and carries sha256 rows to prove
 it. This repo needs only a narrow version of that, because of one fact:
 
-**The Node build already cannot run from a lone clone.** `bundle.mjs` needs a
+**The Node build already cannot run from a lone clone.** `pipeline/index.mjs` needs a
 magmacrunch.com checkout for `arcade/shared/*` and the self-hosted font. So
 requiring *this* sibling too costs nothing new. The Xcode build is different: the
 Mac runs `xcodebuild` inside the game's own checkout, and a project referencing
@@ -114,7 +114,7 @@ That gives the rule:
 |---|---|---|
 | **Xcode** | **vendored, byte-identical, hash-checked** | `GameCenterPlugin.swift`, `GameViewController.swift` |
 | Xcode, once | **stamped** at creation, then owned by the game | `project.pbxproj`, `Info.plist`, `App.entitlements`, `PrivacyInfo.xcprivacy`, `capacitor.config.json`, `package.json` |
-| Node, at build time | **imported from this checkout**, never copied | `bundle.mjs`, the shims, `ios.css`, `check-metadata.mjs` |
+| Node, at build time | **imported from this checkout**, never copied | `pipeline/index.mjs`, and the `check-*.mjs` tools, run from here rather than imported. The shims and `ios.css` were listed here as a plan and are still in the games |
 | macOS shell, by hand | **imported**, run from here | `capture.sh`, `shots.js` |
 
 So `sync.mjs --check` here has exactly two files to verify per game, not fourteen.
@@ -136,10 +136,12 @@ anything is written; see "What has landed and what has not" above.
 + package.json            private, not published
 + .github/workflows/ci.yml  tests on node 22 and 24; drift against a real consumer
 
-- lib/
--   bundle.mjs            web/ -> www/. The pipeline. Takes a game's config.
--   transforms.mjs        each transform, named, individually testable
--   resolve.mjs           sibling lookup: $WEBSITE, ../website, ../../web/website
++ pipeline/
++   index.mjs             web/ -> www/, the shared half: createBuild(), the five
++                         transforms both games wrote identically, outsideRefs()
++                         and resolveShell(). Landed 2026-09-19 as ONE file, not
++                         the three planned here, because with a second game to
++                         check against, the split had nothing to justify it.
 - shim/
 -   gamekit-scores.js     Game Center leaderboards (AdGameCenter candidate)
 -   gamekit-achievements.js
@@ -245,14 +247,14 @@ grouped tree both work:
 | `../hypnopompia` | flat clone, beside the game |
 | `../../engines/hypnopompia` | the grouped `dev/magmacrunch/` tree |
 
-Same shape as the Wii Makefile's `MAGNOLIA`, `bundle.mjs`'s `WEBSITE` and
+Same shape as the Wii Makefile's `MAGNOLIA`, `pipeline/index.mjs`'s `WEBSITE` and
 `js_oracle.mjs`'s website lookup. Fail with the list of paths tried when none of
-them holds `lib/bundle.mjs`.
+them holds `pipeline/index.mjs`.
 
 **Read the Makefile trap in the root CLAUDE.md before writing any of this.** A
 relative candidate list evaluated from a directory one level deeper than the
 paths were written against misses every candidate and fires the guard with the
-target sitting exactly where the error says it looked. `bundle.mjs` resolves from
+target sitting exactly where the error says it looked. `pipeline/index.mjs` resolves from
 `import.meta.url`, not from the caller's cwd, which is what keeps it out of that
 trap. Keep it that way.
 

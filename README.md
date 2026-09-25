@@ -37,7 +37,7 @@ each game's `ios/`. They are the pieces whose game-specific line cannot be drawn
 from two examples yet, so they move when a third game needs them. See AGENTS.md,
 "What has landed and what has not".
 
-The bundle pipeline used to be on that list and came across on 2026-09-18, once
+The bundle pipeline used to be on that list and came across on 2026-09-19, once
 `makemecookies` made it possible to tell a shared transform from one game's.
 
 ## Using it

@@ -201,10 +201,27 @@ entry, or iOS dims the light one and the accent goes nearly black.
 ### The launch image
 
 The wordmark, crisp, with the glow screened under it. Sized as a fraction of
-the square and asserted, because `scaleAspectFill` crops: a portrait phone
-shows a band 46% of the width, a landscape iPad about the middle 75% of the
-height. Art wider than that is cut in half on every device while looking
-perfect in the asset catalog.
+the square and asserted, because `scaleAspectFill` crops. Art past the limit is
+cut off on the device while looking perfect in the asset catalog.
+
+**Which axis it crops depends on the orientation, so the two games' limits are
+not the same numbers.** A square covers the view, so whichever axis the view is
+shorter on is the one that survives only in part:
+
+| The app's phone | Cropped | The phone shows |
+|---|---|---|
+| portrait (george-boole) | the WIDTH | a band 46% of the square's width |
+| landscape (makemecookies) | the HEIGHT | a band 46% of the square's height |
+
+Neither game locks iPad, which crops the other way at about 75%. So each game
+has one limit near 46% and one near 75%, and **which is which is decided by
+`Info.plist`, never by copying the other game's file.**
+
+makemecookies did copy them, and guarded the width at 46% on a device that
+never crops the width while allowing 70% of the height on one that shows 46%.
+It sat that way from 2026-09-19 to 2026-09-24. Nothing surfaced it because the
+art was small enough to pass either way round, so the guard was wrong and green
+the whole time.
 
 The same colours read differently at different coverage. An icon's ground stops
 came out as hot pink across a whole launch screen; the splash carries its own.

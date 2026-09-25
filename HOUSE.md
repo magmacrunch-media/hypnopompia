@@ -223,6 +223,22 @@ It sat that way from 2026-09-19 to 2026-09-24. Nothing surfaced it because the
 art was small enough to pass either way round, so the guard was wrong and green
 the whole time.
 
+**So declare the two limits as `CROP_WIDTH` and `CROP_HEIGHT`**, module-level,
+in whichever file draws the launch image. `tools/check-launch-crop.mjs` reads
+them, derives what each orientation in `Info.plist` actually shows, and fails
+if either allows more than that. It finds the file by those two names rather
+than by filename, because the games do not agree on one.
+
+That is what ties the numbers to the thing they are derived from. Both games'
+were correct and hand-written, and an orientation flipped in `Info.plist` would
+have re-pointed a guard at an axis nothing crops, silently, exactly as before.
+A third game inherits the check by declaring the names.
+
+Note the limits are the *enforced* fractions, not the ones the art is laid out
+to. george-boole sizes its lines from a separate `SAFE_WIDTH = 0.38` and checks
+them against `CROP_WIDTH = 0.44`; makemecookies lays out to literals. Same two
+names for the limits either way.
+
 The same colours read differently at different coverage. An icon's ground stops
 came out as hot pink across a whole launch screen; the splash carries its own.
 

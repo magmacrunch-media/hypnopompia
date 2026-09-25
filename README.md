@@ -26,6 +26,7 @@ wish list.
 | `tools/sync.mjs` | vendors `native/` into a game; `--check` is a hash compare |
 | `tools/check-metadata.mjs` | a game's `store/metadata.md` against App Store Connect's field limits |
 | `tools/check-game-center.mjs` | a game's Game Center ids and art, before any of them are created |
+| `tools/check-launch-crop.mjs` | a game's launch-image crop limits against the orientations its Info.plist declares |
 | `pipeline/index.mjs` | the bundle transforms both games share, and the self-contained sweep |
 | `consumers.json` | every game repo that vendors from here |
 
@@ -46,6 +47,7 @@ node tools/sync.mjs ../../games/george-boole          # vendor native/ in
 node tools/sync.mjs --check                           # every consumer, hash compare
 node tools/check-metadata.mjs ../../games/george-boole/ios
 node tools/check-game-center.mjs ../../games/george-boole/ios
+node tools/check-launch-crop.mjs ../../games/george-boole/ios
 ```
 
 Apache-2.0.

@@ -159,6 +159,7 @@ anything is written; see "What has landed and what has not" above.
 +   sync.mjs              vendor native/ into a game; --check is a hash compare
 +   check-metadata.mjs    a game's metadata.md against App Store Connect's limits
 +   check-game-center.mjs a game's Game Center ids and art, before any are created
++   check-launch-crop.mjs a game's splash crop limits against its Info.plist
 -   screenshots/
 -     capture.sh          simctl: boot, inject, freeze the clock, shoot
 -     shots.js            drives the real UI; the staging half

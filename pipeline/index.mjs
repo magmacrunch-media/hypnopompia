@@ -193,9 +193,15 @@ export function createBuild({
     return found;
   }
 
-  const website = findWebsite();
-  const shared = join(website, ...sharedDir.split('/'));
-  const siteFonts = join(website, 'fonts');
+  // Resolved on first use rather than at construction. A consumer whose page
+  // is entirely self-contained (apps/gratinglab) reads nothing from the website
+  // at all, and dying for a checkout it never touches would be a dependency it
+  // does not have. Memoised, so anyone who does read it still fails once, early,
+  // and with the same message.
+  let websiteRoot = null;
+  const websitePath = () => (websiteRoot ??= findWebsite());
+  const sharedPath = () => join(websitePath(), ...sharedDir.split('/'));
+  const fontsPath = () => join(websitePath(), 'fonts');
 
   /** Apply one named edit to a file in `www/` other than the page, no-op fatal. */
   function editFile(rel, name, fn) {
@@ -287,7 +293,7 @@ export function createBuild({
     mkdirSync(join(OUT, sharedName), { recursive: true });
     const vendored = Object.keys(allow).filter((f) => allow[f] === 'vendor');
     for (const f of vendored) {
-      const src = join(shared, f);
+      const src = join(sharedPath(), f);
       if (!existsSync(src)) die(`shared asset missing from the website checkout: ${src}`);
       cpSync(src, join(OUT, sharedName, f));
     }
@@ -306,7 +312,7 @@ export function createBuild({
   function copyFonts(fonts) {
     mkdirSync(join(OUT, 'fonts'), { recursive: true });
     for (const f of fonts) {
-      const src = join(siteFonts, f);
+      const src = join(fontsPath(), f);
       if (!existsSync(src)) die(`font missing from the website checkout: ${src}`);
       cpSync(src, join(OUT, 'fonts', f));
     }
@@ -352,7 +358,10 @@ export function createBuild({
   }
 
   return {
-    IOS, REPO, WEB, OUT, website, shared, siteFonts, sharedName,
+    IOS, REPO, WEB, OUT, sharedName,
+    get website() { return websitePath(); },
+    get shared() { return sharedPath(); },
+    get siteFonts() { return fontsPath(); },
     die, editFile, edit, copyWeb, openPage, writePage,
     checkAllowlist, vendorShared, copyShims, copyFonts, sweepSelfContained,
   };

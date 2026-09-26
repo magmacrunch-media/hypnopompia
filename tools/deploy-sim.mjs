@@ -287,6 +287,28 @@ function readWebhookFile() {
   return decodeWebhook(raw);
 }
 
+/**
+ * The exact text that goes to Discord. Separate from posting it so it can be
+ * read, tested and previewed without broadcasting anything.
+ *
+ * `<url>` rather than a bare one stops Discord unfurling the link into a
+ * preview card, which for an unlisted page would put a rendered thumbnail of it
+ * in the channel. The empty allowed_mentions at the call site is the other half:
+ * a build announcement never pings anybody.
+ */
+export function announceMessage(url, pairs, note = '') {
+  const names = pairs.map(([, m]) => m.title);
+  const list =
+    names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+  const news = note?.trim() ? `\n\nNew in this one: ${note.trim()}` : '';
+  return (
+    `**${list}** ${names.length === 1 ? 'has' : 'have'} a new iOS test build.\n\n` +
+    `You need a Mac with Xcode, and nothing else -- no Apple account, no signing. ` +
+    `The page says what to do:\n<${url}>${news}\n\n` +
+    `Found something odd? Post it here with the build id from under the app you downloaded.`
+  );
+}
+
 async function announce(url, pairs, note) {
   let hook = (process.env.MAGMACRUNCH_IOS_WEBHOOK || '').trim();
   if (!hook && existsSync(WEBHOOK_FILE)) hook = readWebhookFile();
@@ -303,16 +325,10 @@ async function announce(url, pairs, note) {
   }
   if (!WEBHOOK_RE.test(hook)) die('that does not look like a Discord webhook URL');
 
-  const names = pairs.map(([, m]) => m.title);
-  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
-  const news = note?.trim() ? `\n\nNew in this one: ${note.trim()}` : '';
-  // <...> stops Discord unfurling the link into a preview card, and the empty
-  // allowed_mentions means a build announcement never pings anybody.
-  const content =
-    `**${list}** ${names.length === 1 ? 'has' : 'have'} a new iOS test build.\n\n` +
-    `You need a Mac with Xcode, and nothing else -- no Apple account, no signing. ` +
-    `The page says what to do:\n<${url}>${news}\n\n` +
-    `Found something odd? Post it here with the build id from under the app you downloaded.`;
+  const content = announceMessage(url, pairs, note);
+  // The terminal keeps a copy of whatever was broadcast. A post to a channel
+  // other people read is not something to discover the wording of afterwards.
+  console.log(`\n--- posting to Discord ---\n${content}\n--------------------------`);
   const body = { content, allowed_mentions: { parse: [] } };
 
   const post = async (extra) => {

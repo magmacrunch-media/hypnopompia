@@ -367,6 +367,24 @@ async function main() {
     die(`no target named ${named.join(', ')}. Known: ${targets.map((t) => t.name).join(', ')}`);
   }
 
+  // Reach the Pi BEFORE downloading anything. Without this the first four
+  // minutes are spent pulling artifacts from four repositories and the fifth
+  // discovers the host is unreachable, which is how this was found: the Pi was
+  // unplugged mid-deploy and the script had already fetched 14 MB. Nothing was
+  // damaged, because the page uploads last and no upload had started, but the
+  // wait was wasted and the error arrived nowhere near its cause.
+  if (!dryRun) {
+    try {
+      execFileSync('ssh', [...SSH, HOST, 'true'], { encoding: 'utf8', stdio: 'pipe' });
+    } catch {
+      die(
+        `cannot reach ${HOST} over ssh, so there is nowhere to deploy to.\n` +
+          '  The Pi sleeps and can be unplugged; check it is up before retrying.\n' +
+          '  --dry-run needs no Pi and renders the page locally.',
+      );
+    }
+  }
+
   const work = join(tmpdir(), `deploy-sim-${process.pid}`);
   mkdirSync(work, { recursive: true });
   const pairs = [];
@@ -389,6 +407,7 @@ async function main() {
 
     if (dryRun) {
       console.log(`\nrendered ${pagePath} for ${pairs.length} app(s); uploaded nothing`);
+      console.log('open that file to see exactly what would go up');
       return;
     }
 
@@ -405,7 +424,12 @@ async function main() {
     if (wantAnnounce) await announce(url, pairs.map(([t, m]) => [t, m]), note);
     else console.log('(nothing posted to Discord; pass --announce for that)');
   } finally {
-    rmSync(work, { recursive: true, force: true });
+    // --dry-run's whole purpose is to leave a page to look at, so it keeps the
+    // directory and says where it is. Deleting it here made the path printed
+    // one line earlier a lie, which is the sort of thing that survives a long
+    // time because the command appears to have worked.
+    if (dryRun) console.log(`(kept ${work}; delete it when you are done)`);
+    else rmSync(work, { recursive: true, force: true });
   }
 }
 

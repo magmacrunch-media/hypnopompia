@@ -486,13 +486,20 @@ not consumers in the vendoring sense and do have an app to hand somebody.
 Overloading one list with the other's meaning would break `sync.mjs --check`,
 which is entitled to assume every path it holds contains a vendored copy.
 
-**The unlisted page is not belt-and-braces, it is the only route for two of the
-four.** crunchscope and gratinglab are private repositories, and both a release
-asset and an Actions artifact on one need a GitHub account with access to it. An
-artifact needs an account even on a public repo. A tester with a Mac and no
-GitHub login is the whole case, and an unguessable URL is what serves it. The
-real path lives only in `/etc/nginx/private.d/ios.conf` on the Pi and is read
-back over ssh, so this repository going public would leak nothing.
+**The unlisted page is not belt-and-braces.** An Actions artifact needs a
+signed-in GitHub account to download **even from a public repository**, and
+crunchscope is private, where a release asset needs an account with access as
+well. A tester with a Mac and no GitHub login is the whole case, and an
+unguessable URL is what serves it. The real path lives only in
+`/etc/nginx/private.d/ios.conf` on the Pi and is read back over ssh, so this
+repository going public would leak nothing.
+
+**Do not write down which targets are private.** This paragraph said "two of the
+four, crunchscope and gratinglab" for about an hour on 2026-09-26, and gratinglab
+went public in that hour, from another session working in the same tree. The
+argument above does not depend on the count and the count does not stay true;
+`gh repo view <repo> --json visibility` is the answer whenever it actually
+matters, which is rarely.
 
 `--announce` posts to **#app-development in the magmacrunch executives server**,
 through `$MAGMACRUNCH_IOS_WEBHOOK` or the gitignored

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "The iOS shell for magmacrunch arcade games: Game Center plugin, Xcode project, store tooling",
-  "license": "Apache-2.0",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/magmacrunch-media/hypnopompia.git"

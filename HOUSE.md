@@ -141,13 +141,17 @@ wrong one, so it is written down rather than remembered.
   that writes anything else. The year is a per-release fact and stays free; the
   publisher is a house fact, which is the part a shared checker is entitled to
   know.
-- **There is no title-case form any more.** The Apache-2.0 `LICENSE` and
-  `NOTICE` of the two shared engines read `Magma Crunch Media` until 2026-09-24:
-  34 occurrences across adenosine and hypnopompia, matching neither the display
-  name nor the registered entity, and shipping inside seven published
-  `@magmacrunch/*` npm packages. They were unified to lowercase, so one spelling
-  now covers every licence file in the tree. Beware that `Texas Toast Magma
-  Crunch` is a song title and not this name.
+- **There is no title-case form any more.** The `LICENSE` and `NOTICE` of the
+  two shared engines read `Magma Crunch Media` until 2026-09-24: 34 occurrences
+  across adenosine and hypnopompia, matching neither the display name nor the
+  registered entity, and shipping inside seven published `@magmacrunch/*` npm
+  packages. They were unified to lowercase, so one spelling now covers every
+  licence file in the tree. Beware that `Texas Toast Magma Crunch` is a song
+  title and not this name.
+
+  Both were Apache-2.0 at the time. This repo moved to PolyForm Noncommercial
+  on 2026-09-26, for the reason in its `NOTICE`; adenosine is still Apache and
+  should be, being the one of the two that is actually published.
 - **No slash styling.** `CRUNCH//SCOPE` is a wordmark belonging to one ware
   tool. No game uses one and nothing makes it house style.
 - The legal entity and the seller name are account-level facts rather than a

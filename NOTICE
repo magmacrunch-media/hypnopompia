@@ -1,8 +1,45 @@
 Hypnopompia
 Copyright 2026 magmacrunch media
 
-This product includes software developed by magmacrunch media
-(https://magmacrunch.com).
 
-Hypnopompia is the iOS shell for magmacrunch arcade games:
-https://github.com/magmacrunch-media/hypnopompia
+THE LICENCE
+
+Everything in this repository -- the native Game Center plugin, the bundle
+pipeline, the store and art checkers, the tests and the documentation -- is
+licensed under the PolyForm Noncommercial License 1.0.0, in the LICENSE file
+beside this one.
+
+Read it, learn from it, build on it. Any noncommercial purpose is permitted,
+and that includes personal projects, teaching and research. What is not
+permitted is commercial use: shipping this inside a product, or running it as
+part of a business.
+
+This is a change from the Apache License 2.0 that earlier versions carried,
+made 2026-09-26. That licence was inherited rather than chosen: AGENTS.md
+recorded the whole of its reasoning as "Apache-2.0, same as adenosine".
+adenosine is published on npm, where a library nobody may use commercially is
+not much of a library. Nothing here is published, package.json is private, and
+the only consumers are magmacrunch's own apps, so none of that reasoning
+reached this repo. Commits made before the change remain available under
+Apache 2.0 in the git history; everything from the relicensing commit forward
+is Noncommercial.
+
+
+WHAT THIS VENDORS INTO OTHER REPOSITORIES
+
+native/GameCenterPlugin.swift and native/GameViewController.swift are copied
+byte-identical into each consumer's Xcode project by tools/sync.mjs, so those
+copies carry this licence too.
+
+Every consumer is itself Noncommercial, which is the direction that works: a
+permissive dependency inside a restrictive package is fine and the reverse is
+not. Tightening this repo therefore breaks nothing downstream, which is what
+made the change safe to make at all.
+
+
+WHAT IS RESERVED OUTRIGHT
+
+The magmacrunch name and marks, Copyright 2026 magmacrunch media, all rights
+reserved. The licence covers the software and grants no trademark rights.
+
+If you want to use any of it, ask.

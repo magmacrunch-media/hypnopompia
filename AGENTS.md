@@ -129,7 +129,7 @@ anything is written; see "What has landed and what has not" above.
 ```
 + README.md               what this is
 + AGENTS.md               this file
-+ LICENSE  NOTICE         Apache-2.0, same as adenosine
++ LICENSE  NOTICE         PolyForm Noncommercial 1.0.0; NOTICE says why
 + .gitattributes          pins LF; see "Line endings" below
 + .gitignore
 + consumers.json          every game repo with an ios/, relative to this root

@@ -50,4 +50,5 @@ node tools/check-game-center.mjs ../../games/george-boole/ios
 node tools/check-launch-crop.mjs ../../games/george-boole/ios
 ```
 
-Apache-2.0.
+PolyForm Noncommercial 1.0.0 -- see `LICENSE`, and `NOTICE` for why it is not
+Apache, which it was until 2026-09-26.

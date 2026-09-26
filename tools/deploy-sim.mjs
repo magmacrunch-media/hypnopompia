@@ -247,7 +247,14 @@ function privateUrl() {
 
 async function announce(url, pairs, note) {
   let hook = (process.env.MAGMACRUNCH_IOS_WEBHOOK || '').trim();
-  if (!hook && existsSync(WEBHOOK_FILE)) hook = readFileSync(WEBHOOK_FILE, 'utf8').trim();
+  // The leading ﻿ is not paranoia: PowerShell 5.1's `Out-File -Encoding
+  // utf8` writes a BOM, the obvious way to put a URL in a file on this machine
+  // is PowerShell, and the check below is anchored with ^https. Without this
+  // strip a perfectly good webhook fails as "not a Discord webhook URL" and
+  // looks right in every editor you open it in.
+  if (!hook && existsSync(WEBHOOK_FILE)) {
+    hook = readFileSync(WEBHOOK_FILE, 'utf8').replace(/^﻿/, '').trim();
+  }
   if (!hook) {
     die(
       '--announce needs the webhook for #app-development in the magmacrunch\n' +

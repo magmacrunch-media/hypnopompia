@@ -245,16 +245,51 @@ function privateUrl() {
   return SITE + m[1];
 }
 
+/**
+ * The webhook file, decoded by its byte order mark rather than assumed UTF-8.
+ *
+ * This is not defensive padding. The obvious way to put a URL in a file on the
+ * dev box is PowerShell, and **PS 5.1's `>` wrote UTF-16LE**, observed, not
+ * guessed: `ff fe` then 248 bytes for a 124-character URL. Read as UTF-8 that
+ * is mojibake with a null between every character, so the pattern check below
+ * rejects it -- and the file looks perfect in every editor you open it in,
+ * which makes "that does not look like a Discord webhook URL" one of the more
+ * baffling things this tree could tell somebody.
+ *
+ * Exported so a test can prove all four encodings round-trip without anybody
+ * needing a real webhook.
+ */
+export function decodeWebhook(buffer) {
+  let text;
+  if (buffer[0] === 0xff && buffer[1] === 0xfe) {
+    text = buffer.subarray(2).toString('utf16le');
+  } else if (buffer[0] === 0xfe && buffer[1] === 0xff) {
+    // UTF-16BE, which Node cannot decode directly. Swapping the pairs is
+    // cheaper than refusing, and Buffer.swap16 throws on an odd length rather
+    // than producing something subtly wrong.
+    text = Buffer.from(buffer.subarray(2)).swap16().toString('utf16le');
+  } else if (buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
+    text = buffer.subarray(3).toString('utf8');
+  } else {
+    text = buffer.toString('utf8');
+  }
+  return text.replace(/^﻿/, '').trim();
+}
+
+function readWebhookFile() {
+  const raw = readFileSync(WEBHOOK_FILE);
+  if (raw.includes(0) && !(raw[0] === 0xff && raw[1] === 0xfe) && !(raw[0] === 0xfe && raw[1] === 0xff)) {
+    die(
+      `${WEBHOOK_FILE} holds null bytes and has no byte order mark, so its\n` +
+        '  encoding cannot be determined. Rewrite it as plain UTF-8 or ASCII.',
+    );
+  }
+  return decodeWebhook(raw);
+}
+
 async function announce(url, pairs, note) {
   let hook = (process.env.MAGMACRUNCH_IOS_WEBHOOK || '').trim();
-  // The leading ﻿ is not paranoia: PowerShell 5.1's `Out-File -Encoding
-  // utf8` writes a BOM, the obvious way to put a URL in a file on this machine
-  // is PowerShell, and the check below is anchored with ^https. Without this
-  // strip a perfectly good webhook fails as "not a Discord webhook URL" and
-  // looks right in every editor you open it in.
-  if (!hook && existsSync(WEBHOOK_FILE)) {
-    hook = readFileSync(WEBHOOK_FILE, 'utf8').replace(/^﻿/, '').trim();
-  }
+  if (!hook && existsSync(WEBHOOK_FILE)) hook = readWebhookFile();
   if (!hook) {
     die(
       '--announce needs the webhook for #app-development in the magmacrunch\n' +

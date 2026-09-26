@@ -29,7 +29,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { renderPage, renderCard } from '../tools/deploy-sim.mjs';
+import { renderPage, renderCard, decodeWebhook } from '../tools/deploy-sim.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const TARGETS = join(ROOT, 'tools', 'deploy', 'targets.json');
@@ -88,6 +88,40 @@ test('a blurb cannot break the markup', () => {
   const html = renderCard({ ...target, blurb: 'Gates & <script>truth</script> "tables"' }, manifest);
   assert.doesNotMatch(html, /<script>/);
   assert.match(html, /Gates &amp; &lt;script&gt;/);
+});
+
+/**
+ * The webhook file's encoding, which is not a hypothetical.
+ *
+ * `echo '<url>' > file` in PowerShell 5.1 on the dev box wrote UTF-16LE: the
+ * file began `ff fe` and ran to 248 bytes for a 124-character URL. Read as
+ * UTF-8 that is mojibake with a null between every character, so the anchored
+ * ^https check rejected it -- while the file looked perfect in every editor.
+ * These four are the encodings a person can produce here without trying.
+ */
+const URL_ = 'https://discord.com/api/webhooks/1234567890/abcDEF-ghi_JKL';
+const WEBHOOK_RE = /^https:\/\/(?:canary\.|ptb\.)?discord(?:app)?\.com\/api\/webhooks\/\S+$/;
+
+test('a webhook file is decoded by its BOM, whatever wrote it', () => {
+  const forms = {
+    'utf8, no BOM': Buffer.from(URL_, 'utf8'),
+    'utf8 with BOM': Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(URL_, 'utf8')]),
+    'utf16le, as PowerShell 5.1 > writes it': Buffer.concat([
+      Buffer.from([0xff, 0xfe]),
+      Buffer.from(`${URL_}\r\n`, 'utf16le'),
+    ]),
+    utf16be: Buffer.concat([Buffer.from([0xfe, 0xff]), Buffer.from(URL_, 'utf16le').swap16()]),
+  };
+  for (const [label, buffer] of Object.entries(forms)) {
+    const decoded = decodeWebhook(buffer);
+    assert.strictEqual(decoded, URL_, `${label} did not decode to the URL`);
+    assert.match(decoded, WEBHOOK_RE, `${label} would be rejected as not a webhook`);
+  }
+});
+
+test('trailing whitespace of either kind is not part of the URL', () => {
+  assert.strictEqual(decodeWebhook(Buffer.from(`${URL_}\n`)), URL_);
+  assert.strictEqual(decodeWebhook(Buffer.from(`  ${URL_}\r\n\r\n`)), URL_);
 });
 
 test('every target names a workflow, an artifact and a blurb', () => {

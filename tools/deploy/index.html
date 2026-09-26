@@ -1,0 +1,152 @@
+<!doctype html>
+<!--
+  Template for the iOS Simulator test-build page. tools/deploy-sim.mjs fills the
+  DATE and CARDS fields below and refuses to upload a page with any placeholder
+  left unfilled, the same guard BIS's render_index has.
+
+  Do not write a placeholder's literal name in this comment. Doing it once cost a
+  debugging round: the substitution replaced the mention up here and left the
+  real field in the body, and the page went out with the braces showing. The
+  guard caught it, which is the only reason this note exists rather than a bug.
+
+  No external stylesheet, font or script, deliberately: the Pi serves this off
+  disk at an unlisted path, and a page that fetched anything would both leak the
+  path to whoever it fetched from and break for a tester on a bad connection.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>magmacrunch iOS test builds</title>
+<style>
+  :root {
+    --bg: #14100f;
+    --card: #1e1917;
+    --line: #322a27;
+    --ink: #ece4df;
+    --dim: #a2948c;
+    --hot: #ff7a3d;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2.5rem 1rem 5rem;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  .wrap { max-width: 46rem; margin: 0 auto; }
+  h1 { font-size: 1.7rem; margin: 0 0 .3rem; letter-spacing: -.01em; }
+  h2 { font-size: 1.2rem; margin: 0 0 .2rem; }
+  h3 { font-size: 1rem; margin: 1.6rem 0 .4rem; color: var(--dim);
+       text-transform: uppercase; letter-spacing: .08em; }
+  .lede { color: var(--dim); margin: 0 0 2rem; }
+  code, .mono { font-family: var(--mono); font-size: .86em; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem;
+    margin: 0 0 1rem;
+  }
+  .card p { margin: .4rem 0 .8rem; color: var(--dim); }
+  .button {
+    display: inline-block;
+    background: var(--hot);
+    color: #14100f;
+    font-weight: 650;
+    text-decoration: none;
+    padding: .55rem 1rem;
+    border-radius: 7px;
+  }
+  .button small { font-weight: 400; opacity: .75; }
+  .facts { margin: .8rem 0 0; font-family: var(--mono); font-size: .78rem;
+           color: var(--dim); line-height: 1.8; }
+  .facts span { display: inline-block; margin-right: 1.1rem; white-space: nowrap; }
+  ol, ul { padding-left: 1.3rem; }
+  li { margin: .35rem 0; }
+  pre {
+    background: #100d0c; border: 1px solid var(--line); border-radius: 7px;
+    padding: .8rem 1rem; overflow-x: auto; font-family: var(--mono); font-size: .8rem;
+  }
+  details { margin: .6rem 0; }
+  summary { cursor: pointer; color: var(--dim); }
+  .warn { border-left: 3px solid var(--hot); padding-left: .9rem; }
+  footer { color: var(--dim); font-size: .8rem; margin-top: 3rem;
+           border-top: 1px solid var(--line); padding-top: 1rem; }
+  a { color: var(--hot); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>magmacrunch iOS test builds</h1>
+<p class="lede">Apps in development, built for the iPhone Simulator on a Mac.
+  Updated {{DATE}}. Please do not share this link.</p>
+
+<div class="card warn">
+  <h2>You need Xcode, and nothing else</h2>
+  <p>No Apple developer account, no signing, no clone of anything, and no cable.
+    These run on the simulator that comes with Xcode.</p>
+  <ol>
+    <li>Install <strong>Xcode</strong> from the Mac App Store. It is free and
+      large, about 7&nbsp;GB. Open it once afterwards and let it finish
+      installing its components.</li>
+    <li>Download an app below and unzip it. You get <code>App.app</code>.</li>
+    <li>In Xcode's menu bar, choose
+      <strong>Xcode&nbsp;&rarr;&nbsp;Open Developer Tool&nbsp;&rarr;&nbsp;Simulator</strong>.
+      An iPhone appears; if it does not, pick one from the Simulator's
+      <strong>File&nbsp;&rarr;&nbsp;Open Simulator</strong> menu.</li>
+    <li><strong>Drag <code>App.app</code> onto the iPhone window.</strong> It
+      installs and appears on the home screen. Tap it.</li>
+  </ol>
+  <details>
+    <summary>Or do it from the Terminal</summary>
+    <pre>xcrun simctl install booted App.app
+xcrun simctl launch booted &lt;the bundle id listed on the app below&gt;</pre>
+  </details>
+</div>
+
+{{CARDS}}
+
+<h3>If something goes wrong</h3>
+<ul>
+  <li><strong>&ldquo;App.app is damaged&rdquo;</strong> &mdash; macOS quarantines
+    anything downloaded. Run
+    <code>xattr -dr com.apple.quarantine App.app</code> and try again.</li>
+  <li><strong>Nothing happens when you drag it on</strong> &mdash; the simulator
+    has to be booted first, showing a home screen rather than a black rectangle.</li>
+  <li><strong>&ldquo;Unsupported architecture&rdquo;</strong> &mdash; check the
+    architectures listed on the app against your Mac.
+    <code>arm64</code> is an Apple Silicon Mac (M1 and later),
+    <code>x86_64</code> an Intel one. The Apple menu &rarr; About This Mac says
+    which you have.</li>
+  <li><strong>The simulator is too old</strong> &mdash; each app lists the
+    minimum iOS it needs. Xcode&nbsp;&rarr;&nbsp;Settings&nbsp;&rarr;&nbsp;Components
+    installs other versions.</li>
+</ul>
+
+<h3>What a simulator cannot show you</h3>
+<ul>
+  <li><strong>Game Center.</strong> These are built unsigned and without
+    entitlements, so leaderboards and achievements do nothing. That needs a paid
+    Apple Developer membership, which does not exist yet.</li>
+  <li><strong>Haptics.</strong> There is no taptic engine in a simulator, so
+    anything that should buzz is silent.</li>
+  <li><strong>Real speed, and a real touchscreen.</strong> A trackpad pretending
+    to be a finger on a Mac pretending to be a phone. Layout, wording and rules
+    are worth reporting from here; how something <em>feels</em> is not.</li>
+</ul>
+
+<footer>
+  Built by CI on a hosted Mac, packaged by
+  <code>hypnopompia/tools/package-sim.mjs</code>, put here by
+  <code>tools/deploy-sim.mjs</code>. Each app states the commit it was built
+  from. Report anything odd with that build id.
+</footer>
+
+</div>
+</body>
+</html>

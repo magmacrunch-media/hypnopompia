@@ -1,0 +1,33 @@
+{
+  "comment": "Every project with an iOS Simulator build to hand a tester, for tools/deploy-sim.mjs. This is NOT consumers.json: that one lists the repos vendoring native/, which is two of these four -- crunchscope and gratinglab use the bundle pipeline and the Xcode project without the Game Center plugin, so they are not consumers in that sense but do have an app to share. `artifact` must match the upload-artifact name in that repo's iOS job, and `workflow` the file that job lives in. Everything else about a build -- its title, bundle id, architectures, minimum iOS -- is read from the build.json that package-sim.mjs puts in the artifact beside the zip, so it is not repeated here. `blurb` is the exception, because a one-line description of what the thing IS exists nowhere in an app bundle.",
+  "targets": [
+    {
+      "name": "makemecookies",
+      "repo": "magmacrunch-media/makemecookies",
+      "workflow": "ci.yml",
+      "artifact": "makemecookies-sim",
+      "blurb": "Run a cookie shop through a shift."
+    },
+    {
+      "name": "george-boole",
+      "repo": "magmacrunch-media/george-boole",
+      "workflow": "ci.yml",
+      "artifact": "george-boole-sim",
+      "blurb": "Boolean logic as a puzzle game. Gates, truth tables, and a codex."
+    },
+    {
+      "name": "crunchscope",
+      "repo": "magmacrunch-media/crunchscope",
+      "workflow": "ios.yml",
+      "artifact": "crunchscope-sim",
+      "blurb": "An image signal chain played like an instrument. Not a game."
+    },
+    {
+      "name": "gratinglab",
+      "repo": "magmacrunch-media/gratinglab",
+      "workflow": "ios.yml",
+      "artifact": "gratinglab-sim",
+      "blurb": "Diffraction grating efficiency, solved and plotted. An optics bench."
+    }
+  ]
+}

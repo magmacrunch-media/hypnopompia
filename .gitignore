@@ -3,3 +3,10 @@ node_modules/
 # A game's generated bundle never lives here, but a test run may write one.
 tests/tmp/
 *.log
+
+# The webhook tools/deploy-sim.mjs announces through, for #app-development in
+# the magmacrunch executives server. A webhook URL is a credential: anybody
+# holding it can post into that channel as whatever name it was created with,
+# with no account and no further check. $MAGMACRUNCH_IOS_WEBHOOK is the other
+# way to supply it, and is the better one on a shared machine.
+tools/deploy/discord-webhook.url

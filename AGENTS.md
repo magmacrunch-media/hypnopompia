@@ -162,11 +162,22 @@ anything is written; see "What has landed and what has not" above.
 +   check-metadata.mjs    a game's metadata.md against App Store Connect's limits
 +   check-game-center.mjs a game's Game Center ids and art, before any are created
 +   check-launch-crop.mjs a game's splash crop limits against its Info.plist
++   package-sim.mjs       a built App.app -> <build>.zip + build.json, on the
++                         Mac runner. Called by all four projects' iOS jobs.
++   deploy-sim.mjs        those artifacts -> the Pi's unlisted download page;
++                         --announce posts the link to Discord
++   deploy/
++     targets.json        the four projects with a Simulator build to share.
++                         NOT consumers.json: see the section below
++     index.html          the download page's template, DATE and CARDS unfilled
++     nginx-private.conf  the unlisted nginx location, installed once on the Pi
 -   screenshots/
 -     capture.sh          simctl: boot, inject, freeze the clock, shoot
 -     shots.js            drives the real UI; the staging half
 + tests/
 +   consumers.test.mjs    sync.mjs's exit-code contract, on synthetic games
++   deploy-sim.test.mjs   the download page it builds, and the unfilled-field
++                         guard that caught itself the day it was written
 -   transforms.test.mjs   each transform against a fixture page
 -   fixtures/             a minimal arcade index.html and shared/
 ```
@@ -439,6 +450,72 @@ it. Still to come, and both waiting on the pipeline moving: every transform
 against a fixture page, and `shellcheck` on `capture.sh`. `check-metadata.mjs`
 runs in the game's CI against the game's real `metadata.md`, which is better than
 a fixture and needed no work here.
+
+## Handing a build to somebody with a Mac, without a paid membership
+
+TestFlight is the obvious answer and it needs the $99 membership, the same one
+Game Center is waiting on. Until that exists there is a route that needs no
+Apple account at all: the **iOS Simulator** build, which anybody with Xcode
+installed can run by dragging `App.app` onto a booted simulator. It covers the
+game, the layout, the title card at a real device shape and every transform the
+pipeline applies, and it stops exactly where the membership starts. **A clean
+report from one of these is not the native seam working** -- the build is
+unsigned with `CODE_SIGNING_ALLOWED=NO` and carries no entitlements, so Game
+Center does nothing in it and haptics are silent.
+
+Two scripts, because the two halves run in different places:
+
+| | |
+|---|---|
+| `tools/package-sim.mjs` | on the Mac runner, in each project's iOS job. `ditto`s the App.app that job already built and checked into `<build>.zip`, writes `build.json` beside it, and exports the same facts as `SIM_*` through `GITHUB_ENV` |
+| `tools/deploy-sim.mjs` | on the dev box. Pulls each project's newest successful artifact with `gh`, renders `deploy/index.html` from the manifests, uploads to the Pi, prunes to three, prints the link, and with `--announce` posts it |
+
+**Everything the page states is read out of the built bundle**, via `lipo` and
+`plutil` at package time: the architectures, the minimum iOS, the bundle id and
+the display name. A deployment target raised in `project.pbxproj` without a
+rebuild, or a name changed in `capacitor.config.json` and never synced, would
+otherwise reach a tester as a page describing an app that does not exist. The
+page cannot be more current than the zip if it is generated from the zip.
+
+**`deploy/targets.json` is not `consumers.json` and the difference matters.**
+`consumers.json` lists the repos that vendor `native/`, which is george-boole
+and makemecookies. `targets.json` lists what has a Simulator build worth
+sharing, which is those two plus crunchscope and gratinglab -- both of which use
+the pipeline and the Xcode project without the Game Center plugin, so they are
+not consumers in the vendoring sense and do have an app to hand somebody.
+Overloading one list with the other's meaning would break `sync.mjs --check`,
+which is entitled to assume every path it holds contains a vendored copy.
+
+**The unlisted page is not belt-and-braces, it is the only route for two of the
+four.** crunchscope and gratinglab are private repositories, and both a release
+asset and an Actions artifact on one need a GitHub account with access to it. An
+artifact needs an account even on a public repo. A tester with a Mac and no
+GitHub login is the whole case, and an unguessable URL is what serves it. The
+real path lives only in `/etc/nginx/private.d/ios.conf` on the Pi and is read
+back over ssh, so this repository going public would leak nothing.
+
+`--announce` posts to **#app-development in the magmacrunch executives server**,
+through `$MAGMACRUNCH_IOS_WEBHOOK` or the gitignored
+`tools/deploy/discord-webhook.url`. That is deliberately not the webhook
+block-island-simulator announces through: that one is the family channel, and it
+wants a game to play rather than four unsigned simulator builds. The forum-channel
+case is handled the same way `deploy_pi.py` handles it -- a 400 with code 220001
+means the channel holds threads rather than loose messages, and the post is
+retried with a `thread_name`.
+
+**It refuses to publish a page listing nothing.** If no target yielded a build,
+`deploy-sim.mjs` exits 2 rather than uploading an empty page, for the reason the
+root CLAUDE.md gives at length and `sync.mjs --check` already follows: a check
+that passes by finding nothing reads exactly like a clean result. A target with
+no build is reported by name and skipped, because a project whose iOS job has
+not been given the packaging step yet is an ordinary state and must not stop the
+other three from deploying.
+
+One-time setup, none of it in any repository: install
+`deploy/nginx-private.conf` on the Pi with a fresh random path as its header
+describes, and put the webhook where the script can find it. Run `nginx -t`
+before reloading -- that Pi also serves magmacrunch.com, so a bad conf in
+`private.d` takes the site down rather than just this page.
 
 ## Line endings: this repo is the tree's worst case
 

@@ -6,8 +6,9 @@
  *     node tools/deploy-sim.mjs makemecookies       just that one
  *     node tools/deploy-sim.mjs --dry-run           render the page locally, upload nothing
  *     node tools/deploy-sim.mjs --announce          deploy, then post to Discord --
- *                                                   one thread per app, kept for ever,
- *                                                   and only apps whose build changed
+ *                                                   one thread for all of it, kept for
+ *                                                   ever, and only the apps whose
+ *                                                   build changed
  *     node tools/deploy-sim.mjs --announce --announce-all   post about every app
  *     node tools/deploy-sim.mjs --announce --new-thread     open a fresh thread
  *     node tools/deploy-sim.mjs --announce --note "the shop closes properly now"
@@ -66,30 +67,13 @@ const TARGETS = join(DEPLOY, 'targets.json');
 const WEBHOOK_FILE = join(DEPLOY, 'discord-webhook.url');
 
 /**
- * Which Discord thread belongs to which app, so every build of a thing lands in
- * the one place rather than opening a thread of its own.
+ * The Discord thread every announcement goes into, remembered by id.
  *
  * Gitignored beside the webhook, and for a weaker version of the same reason:
  * it is not a credential, but it is one machine's record of one Discord
  * channel's state and means nothing in a fresh clone.
  */
 const THREAD_FILE = join(DEPLOY, 'discord-thread.json');
-
-/**
- * Today, where the person running this is standing.
- *
- * NOT toISOString(), which is UTC and is how the first thread this tool ever
- * opened was named for tomorrow: announced at 21:05 on the 26th at -0400,
- * posted as "iOS test builds 2026-09-27". The dev box is -0400 and these get
- * announced in the evening, so the UTC date is the wrong one for four hours of
- * every day -- and it is wrong in the direction that looks like a typo rather
- * than a timezone. The root CLAUDE.md has the same warning for `gh`, which
- * reports UTC while commits are authored local.
- */
-function localDay(d = new Date()) {
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
 
 const HOST = process.env.MAGMACRUNCH_PI_HOST || 'jake@100.74.172.4';
 const SITE = 'https://magmacrunch.duckdns.org';
@@ -160,14 +144,19 @@ function ssh(command) {
   return run('ssh', [...SSH, HOST, command]);
 }
 
-/** The build id the page is serving for an app right now, or null. */
-function remoteBuild(name) {
+/** The manifest the page is serving for an app right now, or null. */
+function remoteManifest(name) {
   try {
     const out = ssh(`cat ${REMOTE}/${name}/build.json 2>/dev/null || true`);
-    return out ? JSON.parse(out).build || null : null;
+    return out ? JSON.parse(out) : null;
   } catch {
-    return null;              // never deployed, or unreadable: treat as new
+    return null;              // never deployed, or unreadable
   }
+}
+
+/** The build id the page is serving for an app right now, or null. */
+function remoteBuild(name) {
+  return remoteManifest(name)?.build ?? null;
 }
 
 /** HTML-escape, for the one place a blurb from targets.json reaches the page. */
@@ -354,54 +343,61 @@ function readWebhookFile() {
 }
 
 /**
- * The exact text that goes to Discord. Separate from posting it so it can be
- * read, tested and previewed without broadcasting anything.
+ * The exact text that goes to Discord, for one app. Separate from posting it
+ * so it can be read, tested and previewed without broadcasting anything.
+ *
+ * One post per app, all of them in the one thread below. Each carries its
+ * build id, which is what a tester quotes when reporting something and what
+ * makes the thread readable a month later, and its own line of news when the
+ * deploy was given one.
  *
  * `<url>` rather than a bare one stops Discord unfurling the link into a
- * preview card, which for an unlisted page would put a rendered thumbnail of it
- * in the channel. The empty allowed_mentions at the call site is the other half:
- * a build announcement never pings anybody.
+ * preview card, which for an unlisted page would put a rendered thumbnail of
+ * it in the channel. The empty allowed_mentions at the call site is the other
+ * half: a build announcement never pings anybody.
  */
 export function announceMessage(url, target, manifest, note = '') {
-  const news = note?.trim() ? `\n\nNew in this one: ${note.trim()}` : '';
+  const news = note?.trim() ? `\n\n${note.trim()}` : '';
   return (
-    `New build: \`${manifest.build}\`\n\n` +
-    `You need a Mac with Xcode, and nothing else -- no Apple account, no signing. ` +
-    `The page says what to do:\n<${url}>${news}\n\n` +
+    `**${manifest.title}** has a new iOS test build.\n` +
+    `\`${manifest.build}\`${news}\n\n` +
+    `The page, updated in place:\n<${url}>\n\n` +
+    `You need a Mac with Xcode, and nothing else: no Apple account, no signing. ` +
+    `The page says what to do.\n` +
     `Found something odd? Reply here, and say which build id you were on.`
   );
 }
 
 /**
- * One thread per app, kept for ever: "makemecookies!x4 builds" and so on, the
- * way block-island-simulator's channel reads as one place per thing rather
- * than a list of dates.
+ * One thread, for ever, holding every build of every app.
  *
- * It replaced a thread per DAY, which was wrong twice in one evening. It put
- * two builds of the same app in two places, and it named the first thread
- * "iOS test builds 2026-09-27" at 21:05 on the 26th, because the day came from
- * toISOString() and that is UTC. See localDay() above.
+ * It was two other shapes first and both were wrong, which is worth recording
+ * because each sounded reasonable. A thread per DAY split one app's builds
+ * across two places and, because the day came from toISOString(), named the
+ * first for tomorrow. A thread per APP meant four threads to follow and two
+ * posts in two places for one page. Several posts in one thread is fine; the
+ * thread is the section, and the channel is not a list of dates.
  *
- * The ids live in a gitignored file because they are this machine's note about
- * one channel. Losing it costs one duplicate thread, not an announcement, so
- * nothing here treats a missing or unreadable file as an error.
+ * The id is remembered in a gitignored file. Losing it costs one duplicate
+ * thread rather than an announcement, so nothing here treats a missing or
+ * unreadable file as an error.
  */
-function readThreads() {
+const THREAD_NAME = 'iOS test builds';
+
+function readThread() {
   try {
     const v = JSON.parse(readFileSync(THREAD_FILE, 'utf8'));
-    return v && typeof v === 'object' && v.threads && typeof v.threads === 'object'
-      ? v.threads
-      : {};
+    return typeof v?.threadId === 'string' ? v.threadId : null;
   } catch {
-    return {};
+    return null;
   }
 }
 
-function writeThreads(threads) {
+function writeThread(threadId) {
   try {
-    writeFileSync(THREAD_FILE, JSON.stringify({ threads }, null, 2) + '\n');
+    writeFileSync(THREAD_FILE, JSON.stringify({ thread: THREAD_NAME, threadId }, null, 2) + '\n');
   } catch {
-    /* see above: a forgotten id is a duplicate thread, not a failure */
+    /* see above */
   }
 }
 
@@ -415,7 +411,7 @@ async function threadIdOf(res) {
   }
 }
 
-async function announce(url, pairs, note) {
+async function announce(url, pairs, notes) {
   let hook = (process.env.MAGMACRUNCH_IOS_WEBHOOK || '').trim();
   if (!hook && existsSync(WEBHOOK_FILE)) hook = readWebhookFile();
   if (!hook) {
@@ -433,69 +429,55 @@ async function announce(url, pairs, note) {
 
   if (!pairs.length) {
     console.log('nothing to announce: no app has a build it did not have before');
-    console.log('  (--announce-all posts anyway, for a first run or a lost thread file)');
+    console.log('  (--announce-all posts about every app this run deployed)');
     return;
   }
 
   // `?wait=true` makes Discord answer with the message it created rather than a
   // bare 204, and that answer carries `channel_id` -- which for a post that
-  // opened a thread IS the new thread. There is no other way to learn the id,
-  // and without it every announcement starts a thread of its own.
-  const post = (content, extra, query = '') =>
-    fetch(hook + (hook.includes('?') ? '&' : '?') + 'wait=true' + query, {
+  // opened a thread IS the thread. There is no other way to learn the id, and
+  // without it every announcement starts a thread of its own.
+  const post = (content, threadId) =>
+    fetch(`${hook}${hook.includes('?') ? '&' : '?'}wait=true${threadId ? `&thread_id=${threadId}` : ''}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'User-Agent': 'hypnopompia-deploy/1' },
-      body: JSON.stringify({ content, allowed_mentions: { parse: [] }, ...(extra || {}) }),
+      body: JSON.stringify({
+        content,
+        allowed_mentions: { parse: [] },
+        // 220001 is "Webhooks posted to forum channels must have a thread_name
+        // or thread_id": a forum channel holds no loose messages, every post is
+        // a thread. Naming one creates it; the id posts into the one that
+        // exists.
+        ...(threadId ? {} : { thread_name: THREAD_NAME }),
+      }),
     });
 
-  const threads = readThreads();
+  let threadId = flag('--new-thread') ? null : readThread();
 
   for (const [target, manifest] of pairs) {
-    const thread = `${manifest.title} builds`;
-    const content = announceMessage(url, target, manifest, note.for(manifest.name));
+    const content = announceMessage(url, target, manifest, notes.for(manifest.name));
     // The terminal keeps a copy of whatever was broadcast. A post to a channel
     // other people read is not something to discover the wording of afterwards.
-    console.log(`\n--- posting to Discord: ${thread} ---\n${content}\n---`);
+    console.log(`\n--- posting to Discord ---\n${content}\n--------------------------`);
 
-    const known = threads[manifest.name];
-    if (known && !flag('--new-thread')) {
-      const res = await post(content, null, `&thread_id=${known}`);
-      if (res.ok) {
-        console.log(`announced in the existing thread: ${thread}`);
-        continue;
-      }
-      // Archived, deleted, or an id from another channel. Opening a fresh one
-      // is better than failing the whole deploy over a cache.
-      console.log(`  that thread would not take it (${res.status}); opening a new one`);
-    }
+    let res = await post(content, threadId);
 
-    // 220001 is "Webhooks posted to forum channels must have a thread_name or
-    // thread_id": a forum channel holds no loose messages, every post is a
-    // thread. A plain post is tried first anyway, so this still works if the
-    // webhook is ever moved to an ordinary text channel.
-    let res = await post(content);
-    if (!res.ok) {
-      const detail = await res.text();
-      let code = null;
-      try {
-        code = JSON.parse(detail).code;
-      } catch {
-        /* not JSON; the status is all there is */
-      }
-      if (!(res.status === 400 && code === 220001)) {
-        die(`Discord answered ${res.status}: ${detail.slice(0, 300)}`);
-      }
-      res = await post(content, { thread_name: thread });
-      if (!res.ok) die(`Discord answered ${res.status}: ${(await res.text()).slice(0, 300)}`);
-      const id = await threadIdOf(res);
-      if (id) {
-        threads[manifest.name] = id;
-        writeThreads(threads);
-      }
-      console.log(`announced on Discord, in a new thread: ${thread}`);
-      continue;
+    // Archived, deleted, or an id from another channel: open the thread again
+    // rather than failing the deploy over a cache.
+    if (!res.ok && threadId) {
+      console.log(`  the remembered thread would not take it (${res.status}); opening a new one`);
+      threadId = null;
+      res = await post(content, null);
     }
-    console.log(`announced on Discord: ${thread}`);
+    if (!res.ok) die(`Discord answered ${res.status}: ${(await res.text()).slice(0, 300)}`);
+
+    if (!threadId) {
+      threadId = await threadIdOf(res);
+      if (threadId) writeThread(threadId);
+      console.log(`announced on Discord, in a new thread: ${THREAD_NAME}`);
+    } else {
+      console.log(`announced on Discord, in ${THREAD_NAME}`);
+    }
   }
 }
 
@@ -554,12 +536,26 @@ async function main() {
       );
     }
 
-    const html = renderPage(pairs.map(([t, m]) => [t, m]));
+    // The page lists every app that has a build on the Pi, not just the ones
+    // this run touched. Without this, deploying one app rewrote index.html
+    // down to a single card and unlinked the other three, so the only safe way
+    // to deploy anything was to deploy everything -- which in turn made every
+    // announcement four announcements. An app is dropped from the page only
+    // when the Pi has nothing for it.
+    const deployed = new Map(pairs.map(([t, m]) => [t.name, [t, m]]));
+    const pagePairs = targets
+      .map((t) => deployed.get(t.name) || [t, remoteManifest(t.name)])
+      .filter(([, m]) => m);
+
+    const html = renderPage(pagePairs);
     const pagePath = join(work, 'index.html');
     writeFileSync(pagePath, html);
 
     if (dryRun) {
-      console.log(`\nrendered ${pagePath} for ${pairs.length} app(s); uploaded nothing`);
+      console.log(
+        `\nrendered ${pagePath}: ${pairs.length} app(s) built here, ` +
+          `${pagePairs.length} listed on the page; uploaded nothing`,
+      );
       console.log('open that file to see exactly what would go up');
       return;
     }
@@ -585,7 +581,7 @@ async function main() {
     upload(work, ['index.html'], REMOTE);
 
     const url = privateUrl();
-    console.log(`\n${pairs.length} app(s) deployed: ${url}`);
+    console.log(`\n${pairs.length} app(s) deployed, ${pagePairs.length} on the page: ${url}`);
 
     const fresh = pairs.filter(([, m]) => before[m.name] !== m.build);
     for (const [, m] of pairs) {

@@ -138,25 +138,35 @@ test('every target names a workflow, an artifact and a blurb', () => {
   }
 });
 
-// The message is per app now, one thread per app, so it must carry the build
-// id: a thread that says only "there is a new build" is unreadable a week
+// One post per app, all in one thread, so the post has to say which app and
+// which build: a thread that reads "there is a new build" is useless a month
 // later, and a tester reporting a problem has nothing to quote.
-test('an announcement names the build and does not unfurl the link', () => {
-  const manifest = { title: 'makemecookies!x4', build: 'makemecookies-sim-20260926-abc-def' };
+test('an announcement names the app and the build', () => {
+  const manifest = { title: 'makemecookies!x4', build: 'makemecookies-sim-20260927-abc-def' };
   const msg = announceMessage('https://example.test/ios-x/', {}, manifest);
 
-  assert.match(msg, /makemecookies-sim-20260926-abc-def/);
-  // Angle brackets are what stop Discord rendering a preview card of an
-  // unlisted page into a channel.
-  assert.match(msg, /<https:\/\/example\.test\/ios-x\/>/);
-  assert.doesNotMatch(msg, /New in this one/);
+  assert.match(msg, /makemecookies!x4/);
+  assert.match(msg, /makemecookies-sim-20260927-abc-def/);
 });
 
-test('a note is added, and only when there is one', () => {
-  const manifest = { title: 'gratinglab', build: 'gratinglab-sim-20260926-abc-def' };
-  const withNote = announceMessage('https://example.test/', {}, manifest, 'a title screen');
-  assert.match(withNote, /New in this one: a title screen/);
+// Angle brackets are what stop Discord rendering a preview card of an unlisted
+// page into a channel, which would put a thumbnail of it in front of everyone
+// who can see the channel.
+test('the link is not left bare', () => {
+  const manifest = { title: 'gratinglab', build: 'gratinglab-sim-1' };
+  const msg = announceMessage('https://example.test/ios-x/', {}, manifest);
 
-  // Whitespace is not news: a --note nobody filled in should read as no note.
-  assert.doesNotMatch(announceMessage('https://example.test/', {}, manifest, '   '), /New in this one/);
+  assert.ok(msg.includes('<https://example.test/ios-x/>'), 'the URL should be in angle brackets');
+});
+
+test('a note is added, and whitespace is not news', () => {
+  const manifest = { title: 'gratinglab', build: 'gratinglab-sim-1' };
+
+  assert.match(
+    announceMessage('https://example.test/', {}, manifest, 'a title screen'),
+    /a title screen/,
+  );
+  // A --note nobody filled in should read as no note rather than a blank line.
+  const blank = announceMessage('https://example.test/', {}, manifest, '   ');
+  assert.strictEqual(blank, announceMessage('https://example.test/', {}, manifest));
 });

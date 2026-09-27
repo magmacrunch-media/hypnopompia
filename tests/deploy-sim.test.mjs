@@ -29,7 +29,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { renderPage, renderCard, decodeWebhook } from '../tools/deploy-sim.mjs';
+import { renderPage, renderCard, decodeWebhook, announceMessage } from '../tools/deploy-sim.mjs';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const TARGETS = join(ROOT, 'tools', 'deploy', 'targets.json');
@@ -136,4 +136,27 @@ test('every target names a workflow, an artifact and a blurb', () => {
     // up as "no artifact" at deploy time.
     assert.strictEqual(t.artifact, `${t.name}-sim`, `${t.name}'s artifact should be ${t.name}-sim`);
   }
+});
+
+// The message is per app now, one thread per app, so it must carry the build
+// id: a thread that says only "there is a new build" is unreadable a week
+// later, and a tester reporting a problem has nothing to quote.
+test('an announcement names the build and does not unfurl the link', () => {
+  const manifest = { title: 'makemecookies!x4', build: 'makemecookies-sim-20260926-abc-def' };
+  const msg = announceMessage('https://example.test/ios-x/', {}, manifest);
+
+  assert.match(msg, /makemecookies-sim-20260926-abc-def/);
+  // Angle brackets are what stop Discord rendering a preview card of an
+  // unlisted page into a channel.
+  assert.match(msg, /<https:\/\/example\.test\/ios-x\/>/);
+  assert.doesNotMatch(msg, /New in this one/);
+});
+
+test('a note is added, and only when there is one', () => {
+  const manifest = { title: 'gratinglab', build: 'gratinglab-sim-20260926-abc-def' };
+  const withNote = announceMessage('https://example.test/', {}, manifest, 'a title screen');
+  assert.match(withNote, /New in this one: a title screen/);
+
+  // Whitespace is not news: a --note nobody filled in should read as no note.
+  assert.doesNotMatch(announceMessage('https://example.test/', {}, manifest, '   '), /New in this one/);
 });

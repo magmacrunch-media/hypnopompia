@@ -10,3 +10,8 @@ tests/tmp/
 # with no account and no further check. $MAGMACRUNCH_IOS_WEBHOOK is the other
 # way to supply it, and is the better one on a shared machine.
 tools/deploy/discord-webhook.url
+
+# What tools/deploy-sim.mjs remembers about the thread it last opened in
+# #app-development, so a second build the same day continues that thread. One
+# machine's note about one channel, and meaningless in a fresh clone.
+tools/deploy/discord-thread.json

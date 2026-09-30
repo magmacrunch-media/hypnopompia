@@ -44,17 +44,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
 /**
- * Source here -> destination inside a game repo.
+ * Source here -> destination inside a consumer, from tools/files.mjs.
  *
- * Two entries, so this is a const rather than the separate manifest.json
- * magma-kit keeps. Move it out to its own file if it grows past a handful, and
- * note that magma-kit's reason for a separate file was that its list is long
- * enough to read as data.
+ * It moved out of this file when tests/consumers.test.mjs came to need it too:
+ * everything below runs at import time, so the test cannot import from here and
+ * was keeping its own copy of the destination path instead. A third entry with a
+ * different destination is what made that copy wrong rather than merely untidy.
  */
-const FILES = {
-  'native/GameCenterPlugin.swift': 'ios/App/App/App/GameCenterPlugin.swift',
-  'native/GameViewController.swift': 'ios/App/App/App/GameViewController.swift',
-};
+import { FILES } from './files.mjs';
 
 const sha = (buf) => createHash('sha256').update(buf).digest('hex');
 

@@ -113,13 +113,57 @@ That gives the rule:
 | Read by | Mechanism | Files |
 |---|---|---|
 | **Xcode** | **vendored, byte-identical, hash-checked** | `GameCenterPlugin.swift`, `GameViewController.swift` |
+| **a game's shim tests** | **vendored, byte-identical, hash-checked** | `testkit/fake-gamecenter.cjs` |
 | Xcode, once | **stamped** at creation, then owned by the game | `project.pbxproj`, `Info.plist`, `App.entitlements`, `PrivacyInfo.xcprivacy`, `capacitor.config.json`, `package.json` |
 | Node, at build time | **imported from this checkout**, never copied | `pipeline/index.mjs`, and the `check-*.mjs` tools, run from here rather than imported. The shims and `ios.css` were listed here as a plan and are still in the games |
 | macOS shell, by hand | **imported**, run from here | `capture.sh`, `shots.js` |
 
-So `sync.mjs --check` here has exactly two files to verify per game, not fourteen.
+So `sync.mjs --check` here has three files to verify per game, not fourteen.
 The shims are copied into `www/shim/`, which is generated and gitignored, so they
 are never vendored and cannot drift.
+
+**The third one is not native and is vendored anyway, which is the interesting
+case.** `testkit/fake-gamecenter.cjs` is the fake plugin a game's shim tests run
+against, and it is here because it is a *model of* `GameCenterPlugin.swift`:
+every condition in it exists because the Swift rejects on that condition. The
+two have to move together or both games' shim suites quietly stop testing the
+refusals they appear to test.
+
+It was a copy in each game for one day and drifted in that day. makemecookies'
+copy modelled the three `guard let` argument rejections and george-boole's did
+not, so george-boole's suite would have passed a shim submitting a score of
+`undefined`. Nothing on either side could have noticed, which is the same
+argument as for the Swift and is why it gets the same mechanism.
+
+**Importing it instead was the obvious alternative and it costs more than it
+saves.** A game's `ios-shim` job is deliberately `checkout` + `setup-node` +
+`run` and nothing else; resolving this repo from it would add the
+push-the-shell-first coupling to the one job you most want independent, and
+would stop the suite running from a bare game clone. Vendoring keeps each
+suite self-contained and still reddens both ends on drift.
+
+What is NOT vendored, deliberately: the harness scaffolding those suites are
+mostly made of -- the little DOM, `settle()`, the storage fake, the realm
+loader. About half of each game's file, and drift in it is inert: the two
+suites merely differ in convenience, nothing goes quietly wrong. The fake
+Haptics is not here either, because it models `@capacitor/haptics`, which is
+npm's and not this repo's to own.
+
+**`.cjs`, not `.js`, and the reason is this repo rather than the games.** The
+games' `ios/tests/` is CommonJS, so the file has to be; but this package is
+`"type": "module"`, which makes a `.js` file here ESM however it is loaded, and
+`createRequire` does not escape that -- it looks as though it should, and it
+was tried. The alternative was a `testkit/package.json` saying
+`"type": "commonjs"`, which works and hides the fact in a file nobody reads on
+the way to the one that matters.
+
+**Adding it inverted the push order for once.** The usual rule is the shell
+before its consumers. Here the check is a two-way byte comparison and this
+repo's `drift` job checks out george-boole at `main`, so pushing a new FILES
+entry first reddens this repo until the games catch up, while pushing the games
+first is invisible to a shell that does not yet know about the file. **Games
+first, then here.** That is specific to adding or removing a vendored file; a
+change to the contents of one still goes here first.
 
 ## Layout
 
@@ -152,13 +196,19 @@ anything is written; see "What has landed and what has not" above.
 + native/
 +   GameCenterPlugin.swift    vendored into each game's App target
 +   GameViewController.swift  the one line that registers it
++ testkit/
++   fake-gamecenter.cjs   vendored into each game's ios/tests/. A model of the
++                         plugin above, which is why it lives beside it.
 - template/
 -   App/                  the Capacitor iOS project, placeholders unstamped
 -   store/metadata.md     headings with Apple's limits, bodies empty
 -   bundle.config.mjs     the per-game config, commented
 + tools/
 -   new-game-ios.mjs      stamp template/ into games/<game>/ios/
-+   sync.mjs              vendor native/ into a game; --check is a hash compare
++   sync.mjs              vendor FILES into a game; --check is a hash compare
++   files.mjs             what sync.mjs vendors and where it lands. Its own
++                         module because the test needs it and sync.mjs works
++                         at import time.
 +   check-metadata.mjs    a game's metadata.md against App Store Connect's limits
 +   check-game-center.mjs a game's Game Center ids and art, before any are created
 +   check-launch-crop.mjs a game's splash crop limits against its Info.plist
@@ -214,6 +264,8 @@ reassuring text and exited 0 regardless, which is the bug this repo is about. So
 | no target and no `--check` | usage error, not silent success |
 | vendoring | byte-identical, idempotent, and repairs drift |
 | `native/` itself | present, non-empty, and free of CR bytes |
+| the fake plugin | refuses on each condition the Swift's guards refuse on, in the Swift's order |
+| the Swift's guards | counted, so a new one cannot land unmodelled |
 
 Every fixture is a throwaway game tree in the OS temp directory, passed
 explicitly, so no test depends on which games are checked out and none can touch

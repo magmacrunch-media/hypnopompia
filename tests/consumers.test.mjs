@@ -34,29 +34,50 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
+import { FILES } from '../tools/files.mjs';
+
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SYNC = join(ROOT, 'tools', 'sync.mjs');
 const NATIVE = join(ROOT, 'native');
 
-/** Where sync.mjs puts each native file inside a game. Mirrors its FILES map. */
+/**
+ * Where the Swift lands. Still a const because several tests below name a
+ * specific vendored file by path, but no longer the only destination: FILES also
+ * carries testkit/fake-gamecenter.js into ios/tests/, and everything that has to
+ * cover EVERY vendored file reads FILES instead.
+ */
 const DEST = 'ios/App/App/App';
 
 const sha = (b) => createHash('sha256').update(b).digest('hex');
 const nativeNames = () => readdirSync(NATIVE).filter((f) => f.endsWith('.swift'));
+
+/** Every vendored file's destination inside a consumer, by its base name. */
+const destOf = (name) => Object.entries(FILES)
+  .find(([src]) => src.endsWith(`/${name}`))[1];
 
 function run(...args) {
   const r = spawnSync(process.execPath, [SYNC, ...args], { encoding: 'utf8' });
   return { code: r.status, out: `${r.stdout}${r.stderr}` };
 }
 
-/** A throwaway game tree. `vendored` seeds it with in-sync copies. */
+/**
+ * A throwaway game tree. `vendored` seeds it with in-sync copies of every file
+ * in FILES, which is the part that has to be read from FILES rather than from
+ * native/: a tree seeded with only the Swift is a tree missing a vendored file,
+ * and every in-sync test here would have reported drift instead of passing.
+ *
+ * `only` names base names to seed, for the tests about a partial consumer.
+ */
 function fakeGame({ vendored = true, only = null } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'hypno-game-'));
   mkdirSync(join(root, DEST), { recursive: true });
   if (vendored) {
-    for (const f of nativeNames()) {
-      if (only && !only.includes(f)) continue;
-      cpSync(join(NATIVE, f), join(root, DEST, f));
+    for (const [src, dest] of Object.entries(FILES)) {
+      const name = src.split('/').pop();
+      if (only && !only.includes(name)) continue;
+      const to = join(root, dest);
+      mkdirSync(dirname(to), { recursive: true });
+      cpSync(join(ROOT, src), to);
     }
   }
   return root;

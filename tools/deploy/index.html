@@ -172,6 +172,17 @@
       <em>&ldquo;you can&rsquo;t open the application because it is not
       supported on this Mac&rdquo;</em>. That message means the file is fine and
       is being opened in the wrong place.</li>
+    <li><strong>If you have installed this app before, delete it from the
+      iPhone first.</strong> These are web apps in a native shell, and the web
+      storage that comes with that &mdash; saved scores, caches, a service
+      worker &mdash; belongs to the bundle id rather than to the file you are
+      about to install, so installing over the top keeps every bit of it.
+      Usually that is what you want. Occasionally it is not: the builds dated
+      2&nbsp;October&nbsp;2026 took out a service worker that earlier ones had
+      registered, and a leftover one carries on answering with the files it
+      cached, which is an old version of the app wearing a new version's
+      number. Hold the icon and remove it, or:
+      <pre>xcrun simctl uninstall booted <em>the.bundle.id</em></pre></li>
     <li>With the iPhone showing its home screen, open <strong>Terminal</strong>
       (Spotlight, type Terminal) and paste these two lines, one at a time. The
       bundle id is listed on the app below.

@@ -322,8 +322,8 @@ export function createBuild({
     const unknown = readdirSync(WEB).filter((e) => !top.has(e)).sort();
     if (unknown.length) {
       die(
-        `web/ holds ${unknown.length} top-level entr${unknown.length === 1 ? 'y' : 'ies'} this script does not know about:`,
-        `${unknown.map((e) => `  web/${e}`).join('\n')}\n\nDecide what each one is and add it to CARRY or to EXCLUDE. Refusing to\nguess: carrying an unread file could ship behaviour nobody meant to ship,\nand excluding it silently could break the game.`
+        `${web}/ holds ${unknown.length} top-level entr${unknown.length === 1 ? 'y' : 'ies'} this script does not know about:`,
+        `${unknown.map((e) => `  ${web}/${e}`).join('\n')}\n\nDecide what each one is and add it to CARRY or to EXCLUDE. Refusing to\nguess: carrying an unread file could ship behaviour nobody meant to ship,\nand excluding it silently could break the game.`
       );
     }
 
@@ -332,8 +332,8 @@ export function createBuild({
     const missing = declared.filter((rel) => !existsSync(join(WEB, rel))).sort();
     if (missing.length) {
       die(
-        `${missing.length} entr${missing.length === 1 ? 'y' : 'ies'} declared here no longer exist in web/:`,
-        `${missing.map((e) => `  web/${e}`).join('\n')}\n\nRemove them from CARRY or EXCLUDE. An exclusion for a file that is gone\nexcludes nothing, and the next reader has no way to tell that from one\nthat is doing its job.`
+        `${missing.length} entr${missing.length === 1 ? 'y' : 'ies'} declared here no longer exist in ${web}/:`,
+        `${missing.map((e) => `  ${web}/${e}`).join('\n')}\n\nRemove them from CARRY or EXCLUDE. An exclusion for a file that is gone\nexcludes nothing, and the next reader has no way to tell that from one\nthat is doing its job.`
       );
     }
   }

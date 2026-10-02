@@ -289,6 +289,55 @@ export function createBuild({
     }
   }
 
+  /**
+   * Every top-level entry in `web/` must be one this build has an opinion
+   * about: carried into the bundle, or excluded from it.
+   *
+   * This is `checkAllowlist` pointed the other way, and it exists because the
+   * asymmetry between the two was a real hole rather than a tidiness problem.
+   * The shared allowlist refuses to guess about a script the arcade picked up,
+   * on the grounds that vendoring an unread one could ship anything. Nothing
+   * said the same about a file appearing in the game's own `web/`, so one did:
+   * a PWA commit added sw.js and a line registering it, the pipeline had no
+   * opinion, and an App Store build shipped a service worker that precached the
+   * app's own html, css and js cache-first under a name that never changes.
+   * That is a bug whose first symptom arrives on the SECOND release, as a
+   * player running code the update was supposed to replace.
+   *
+   * "The game's own folder" is exactly why it was not noticed. Files arriving
+   * from the website are treated as suspect; files the game's authors added are
+   * trusted, and most of the time they are right to be. A new stylesheet is
+   * inert. The exceptions are the ones that do something on their own, and a
+   * list is the only way to tell those apart from the others without guessing.
+   *
+   * Top-level only, deliberately. A new file under css/ or js/ is reached by
+   * `index.html`, which the stamp checks and the self-contained sweep already
+   * police. Listing every file would mean editing this on every change and
+   * would train everybody to add entries without reading them, which is how a
+   * list stops being a check.
+   */
+  function checkWebInventory(carry, exclude = new Set()) {
+    const declared = [...carry, ...exclude];
+    const top = new Set(declared.map((rel) => rel.split('/')[0]));
+    const unknown = readdirSync(WEB).filter((e) => !top.has(e)).sort();
+    if (unknown.length) {
+      die(
+        `web/ holds ${unknown.length} top-level entr${unknown.length === 1 ? 'y' : 'ies'} this script does not know about:`,
+        `${unknown.map((e) => `  web/${e}`).join('\n')}\n\nDecide what each one is and add it to CARRY or to EXCLUDE. Refusing to\nguess: carrying an unread file could ship behaviour nobody meant to ship,\nand excluding it silently could break the game.`
+      );
+    }
+
+    // A list that names things which no longer exist stops being a check and
+    // becomes decoration, so it is held to the tree in both directions.
+    const missing = declared.filter((rel) => !existsSync(join(WEB, rel))).sort();
+    if (missing.length) {
+      die(
+        `${missing.length} entr${missing.length === 1 ? 'y' : 'ies'} declared here no longer exist in web/:`,
+        `${missing.map((e) => `  web/${e}`).join('\n')}\n\nRemove them from CARRY or EXCLUDE. An exclusion for a file that is gone\nexcludes nothing, and the next reader has no way to tell that from one\nthat is doing its job.`
+      );
+    }
+  }
+
   function vendorShared(allow) {
     mkdirSync(join(OUT, sharedName), { recursive: true });
     const vendored = Object.keys(allow).filter((f) => allow[f] === 'vendor');
@@ -363,7 +412,7 @@ export function createBuild({
     get shared() { return sharedPath(); },
     get siteFonts() { return fontsPath(); },
     die, editFile, edit, copyWeb, openPage, writePage,
-    checkAllowlist, vendorShared, copyShims, copyFonts, sweepSelfContained,
+    checkAllowlist, checkWebInventory, vendorShared, copyShims, copyFonts, sweepSelfContained,
   };
 }
 

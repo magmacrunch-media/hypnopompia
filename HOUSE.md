@@ -322,8 +322,30 @@ like they came from the same building.
 
 ## Part 4: money, and the sentence in Part 1
 
-Both games are free with no In-App Purchase, which is what makes the guarantee
-in 1.4 literally true.
+**Both games are paid and neither has an In-App Purchase.** george-boole is
+$2.99 and makemecookies $1.99, each decided in that game's own
+`store/metadata.md` under a `## Price` heading, and both are free in a browser
+at magmacrunch.com/arcade/. That is the third of the three positions tabulated
+below, "paid app, free on the web", and it is the house's position rather than
+an open question.
+
+**It is the absence of In-App Purchase that makes the guarantee in 1.4
+literally true, not the absence of a price.** This part opened with "both games
+are free" until 2026-10-03, which conflates the two: "No purchases" in that
+sentence is about purchases *inside* the app, and buying the app is not one.
+Do not soften that line in a listing on account of the price, and do not read a
+price as having cost the guarantee anything.
+
+**The ladder is the part that is shared, and it is deliberate.** $2.99 is the
+substantial game and $1.99 the shorter one: george-boole has eight
+difficulties, a Gauntlet, a codex and a binary primer, and makemecookies is one
+song and about fifty seconds. A third game prices against that ladder rather
+than against whatever the last one happened to charge. And **do not reuse
+george-boole's break-even arithmetic**, which earns its $2.99 against the $99
+Apple Developer Program fee at roughly forty sales a year: the fee is per
+account and per year, so the first paid app covers it and every later one is
+marginal revenue. An argument that assumes otherwise reaches for a higher
+number than a short game can carry.
 
 A tip jar is a digital purchase, so Apple requires In-App Purchase for it: a
 consumable per tier, an "In-App Purchases" badge on the listing, 15% under the
@@ -343,10 +365,21 @@ If tips arrive, two things change and both are in this file's scope:
 Until then: tips live on magmacrunch.com, where they cost no commission and
 contradict nothing.
 
-### Ads and a paid tier: open, 2026-09-19
+### Ads: open. The price is not, as of 2026-10-03
 
-Raised and deliberately not decided. Written down because the arguments are
-the same every time and the costs are easy to forget while enthusiastic.
+**The paid-or-free half is settled** and is recorded at the top of this part:
+both apps are paid, both are free on the web, neither has an In-App Purchase.
+What is still open is ads, and the tip jar above.
+
+The heading here said "Ads and a paid tier: open, 2026-09-19" until
+2026-10-03, by which time george-boole had been priced for three days and
+makemecookies was being priced the same afternoon. **A question recorded as
+open after it has been answered twice is worse than one nobody wrote down**,
+because the next reader re-opens it, and the arguments below read as live
+options rather than as the record of a choice.
+
+The rest is kept because the arguments are the same every time and the costs
+are easy to forget while enthusiastic.
 
 **An ad SDK is a network request, and that is the whole problem.** The build
 fails on any asset that reaches outside the bundle, which is what makes the
@@ -358,7 +391,9 @@ is paid in the one asset here that cannot be bought back.
 **A paid tier has a shape Apple prefers.** Two listings, one free and one Pro,
 is the old pattern and reads as a duplicate; one free app with a non-consumable
 that removes ads is the modern one. Either way it is StoreKit, the Paid Apps
-agreement, and the bank and tax details in App Store Connect.
+agreement, and the bank and tax details in App Store Connect. Paid up front,
+which is what both games do, still needs that agreement and those details but
+no StoreKit, no consumable and no In-App Purchases badge on the listing.
 
 **And the website is the asymmetry.** The same game is free in a browser at
 magmacrunch.com/arcade/, generated from the same `web/` the app is derived
@@ -373,7 +408,17 @@ Three coherent positions:
 |---|---|
 | **Apps clean, ads on the site** | Nothing structural. The guarantee survives and becomes a reason to install rather than an accident. Tips on the website. |
 | **Free with ads, paid to remove them** | The guarantee, the privacy label, and the build check. Plus an ad SDK, StoreKit, and a rewrite of both listings and both privacy pages. |
-| **Paid app, free on the web** | The cleanest story, and it asks people to pay for what a browser gives away. Works only while the app is meaningfully better: today that is Game Center, haptics and playing with the network off. |
+| **Paid app, free on the web** (taken) | The cleanest story, and it asks people to pay for what a browser gives away. Works only while the app is meaningfully better: today that is Game Center, haptics and playing with the network off. |
+
+**The third row's condition is load-bearing now rather than hypothetical, and
+it is not yet proven.** Asking for money for what a browser gives away works
+only while the app is meaningfully better, and the three things that make it
+better are Game Center, haptics and playing with the network off. The third is
+true today and checked by the build. The first two are inert everywhere they
+have been run: both need a device, and a device needs the paid membership. So
+the position taken above rests on two claims no simulator can test, which is
+an argument for proving them before the first submission rather than for
+pricing differently.
 
 **The order is asymmetric, and that is the only time-sensitive part.** Shipping
 clean keeps every option open: ads or a paid tier can be added to a shipped app
